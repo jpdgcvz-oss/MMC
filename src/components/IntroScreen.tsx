@@ -6,6 +6,8 @@
 import React, { useState } from "react";
 import { Brain, Sparkles, ChevronRight, Calculator, Hash, Compass } from "lucide-react";
 import { motion } from "motion/react";
+// @ts-ignore
+import capitaoCharacter from "../assets/images/capitao_character_1782266376699.jpg";
 
 interface IntroScreenProps {
   onStartGame: (numbers: number[]) => void;
@@ -46,9 +48,18 @@ export default function IntroScreen({ onStartGame }: IntroScreenProps) {
           </h1>
         </div>
 
+        <div className="relative rounded-2xl overflow-hidden border border-indigo-100/60 shadow-lg shadow-indigo-100/10 max-w-[280px]">
+          <img 
+            src={capitaoCharacter} 
+            alt="Capitão Matemática" 
+            className="w-full h-auto object-cover" 
+            referrerPolicy="no-referrer"
+          />
+        </div>
+
         <p className="text-slate-600 leading-relaxed text-sm">
           Bem-vindo ao seu espaço de aprendizado dinâmico! Aqui, você não apenas calcula o Mínimo Múltiplo Comum, mas é 
-          guiado passo a passo pelo nosso tutor especialista. 
+          guiado passo a passo pelo Capitão Matemática. 
         </p>
 
         <div className="space-y-3 font-sans text-sm">
@@ -58,7 +69,7 @@ export default function IntroScreen({ onStartGame }: IntroScreenProps) {
           </div>
           <div className="flex gap-3 items-start">
             <span className="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-50 text-indigo-700 flex items-center justify-center font-bold text-xs">2</span>
-            <p className="text-slate-600"><strong className="text-slate-800">O Tutor Pergunta:</strong> Identifique os menores números primos divisores interativamente.</p>
+            <p className="text-slate-600"><strong className="text-slate-800">O Capitão Pergunta:</strong> Identifique os menores números primos divisores interativamente.</p>
           </div>
           <div className="flex gap-3 items-start">
             <span className="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-50 text-indigo-700 flex items-center justify-center font-bold text-xs">3</span>

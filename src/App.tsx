@@ -9,6 +9,8 @@ import {
   Brain, Sparkles, Compass, Lightbulb, GraduationCap, 
   HelpCircle, ChevronRight, Award, Trophy, Star 
 } from "lucide-react";
+// @ts-ignore
+import fepiLogo from "./assets/images/fepi_logo_1782266389493.jpg";
 import { ChatMessage, StepState } from "./types";
 import { 
   generateSteps, 
@@ -281,13 +283,17 @@ export default function App() {
       {/* Editorial Navigation Header */}
       <header className="bg-white border-b border-indigo-50 py-4 px-6 select-none shadow-xl shadow-indigo-100/10">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white shadow-md">
-              <GraduationCap className="w-5 h-5" />
-            </div>
+          <div className="flex items-center gap-4">
+            <img 
+              src={fepiLogo} 
+              alt="Colégio FEPI" 
+              className="h-10 w-auto object-contain" 
+              referrerPolicy="no-referrer"
+            />
+            <div className="h-6 w-px bg-slate-200"></div>
             <div>
-              <h1 className="text-lg font-bold text-slate-850 tracking-tight flex items-center gap-2">
-                Tutor de MMC Interativo
+              <h1 className="text-lg font-bold text-slate-800 tracking-tight flex items-center gap-2">
+                Capitão Matemática: Desafio do MMC
               </h1>
               <p className="text-[10px] text-slate-400 font-semibold tracking-widest uppercase">
                 Metodologias Ativas de Matemática
@@ -298,7 +304,7 @@ export default function App() {
           <div className="hidden sm:flex items-center gap-4 text-xs font-semibold text-slate-500">
             <span className="flex items-center gap-1.5 text-indigo-700 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100/50">
               <Brain className="w-3.5 h-3.5 animate-pulse" />
-              Tutor Disponível
+              Capitão Disponível
             </span>
             <span className="text-indigo-100">|</span>
             <span className="font-mono text-slate-400">Ativo</span>
@@ -409,7 +415,7 @@ export default function App() {
       {/* Aesthetic Footer */}
       <footer className="bg-white border-t border-indigo-50 py-6 mt-auto select-none">
         <div className="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400 gap-4">
-          <p>© 2026 Tutor de MMC Interativo. Desenvolvido com amor e dedicação pedagógica.</p>
+          <p>© 2026 Capitão Matemática. Desenvolvido pelo Professor João Paulo Dutra.</p>
           <div className="flex gap-4">
             <span className="hover:text-indigo-600 cursor-pointer">Termos de Uso</span>
             <span>•</span>

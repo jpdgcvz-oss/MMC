@@ -10,6 +10,8 @@ import {
   ChevronRight, ArrowRight, CornerDownLeft, MessageCircle 
 } from "lucide-react";
 import { ChatMessage, StepState } from "../types";
+// @ts-ignore
+import capitaoCharacter from "../assets/images/capitao_character_1782266376699.jpg";
 
 interface TutorChatProps {
   messages: ChatMessage[];
@@ -137,14 +139,19 @@ export default function TutorChat({
       {/* Chat header */}
       <div className="bg-slate-50 border-b border-indigo-50 py-3.5 px-4 flex items-center justify-between select-none">
         <div className="flex items-center gap-2.5">
-          <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-100">
-            <span className="text-xl">👨‍🏫</span>
+          <div className="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center text-white shadow-md shadow-indigo-100">
+            <img 
+              src={capitaoCharacter} 
+              alt="Capitão Matemática" 
+              className="w-full h-full object-cover" 
+              referrerPolicy="no-referrer"
+            />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-slate-800 leading-none">Prof. Léo</h3>
+            <h3 className="text-sm font-bold text-slate-800 leading-none">Capitão Matemática</h3>
             <span className="text-[11px] text-indigo-600 font-semibold font-sans flex items-center gap-1 mt-1">
               <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
-              Tutor de MMC Ativo
+              Capitão de MMC Ativo
             </span>
           </div>
         </div>
@@ -171,11 +178,20 @@ export default function TutorChat({
                 className={`flex gap-3 max-w-[85%] ${isTutor ? "mr-auto" : "ml-auto flex-row-reverse"}`}
               >
                 {/* Avatar */}
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white flex-shrink-0 shadow-sm ${
-                  isTutor ? "bg-indigo-600" : "bg-slate-700"
-                }`}>
-                  {isTutor ? <span className="text-xs">👨‍🏫</span> : <span className="text-[10px] font-bold font-sans">VC</span>}
-                </div>
+                {isTutor ? (
+                  <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0 shadow-sm border border-indigo-100">
+                    <img 
+                      src={capitaoCharacter} 
+                      alt="Capitão" 
+                      className="w-full h-full object-cover" 
+                      referrerPolicy="no-referrer"
+                    />
+                  </div>
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-white flex-shrink-0 shadow-sm">
+                    <span className="text-[10px] font-bold font-sans">VC</span>
+                  </div>
+                )}
 
                 {/* Bubble */}
                 <div className={`rounded-2xl p-3.5 shadow-sm text-sm border ${
@@ -197,8 +213,13 @@ export default function TutorChat({
             animate={{ opacity: 1, y: 0 }}
             className="flex gap-3 max-w-[85%] mr-auto"
           >
-            <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white flex-shrink-0 shadow-sm">
-              <span className="text-xs">👨‍🏫</span>
+            <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0 shadow-sm border border-indigo-100">
+              <img 
+                src={capitaoCharacter} 
+                alt="Capitão" 
+                className="w-full h-full object-cover" 
+                referrerPolicy="no-referrer"
+              />
             </div>
             <div className="bg-white border border-indigo-50 rounded-2xl rounded-tl-none p-3.5 flex items-center gap-1.5 shadow-sm">
               <span className="w-2 h-2 bg-indigo-600 rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></span>
@@ -343,7 +364,7 @@ export default function TutorChat({
             type="submit"
             disabled={isAiLoading || !aiQuestion.trim()}
             className="bg-indigo-600 hover:bg-indigo-700 text-white p-2.5 rounded-xl transition-all shadow-md shadow-indigo-100 disabled:opacity-50 flex items-center justify-center cursor-pointer"
-            title="Enviar dúvida de matemática para o Tutor AI"
+            title="Enviar dúvida de matemática para o Capitão Matemática"
           >
             <Send className="w-4 h-4" />
           </button>

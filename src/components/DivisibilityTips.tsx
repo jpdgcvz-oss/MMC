@@ -128,7 +128,7 @@ export default function DivisibilityTips() {
                   <div className="flex gap-2 items-start">
                     <Award className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
                     <p>
-                      <strong>Erro como Oportunidade:</strong> O erro é uma parte natural e rica do aprendizado! Nosso tutor irá analisar onde você se confundiu nas divisões ou na escolha do número primo e explicará carinhosamente a regra matemática correspondente.
+                      <strong>Erro como Oportunidade:</strong> O erro é uma parte natural e rica do aprendizado! O Capitão Matemática irá analisar onde você se confundiu nas divisões ou na escolha do número primo e explicará carinhosamente a regra matemática correspondente.
                     </p>
                   </div>
                 </div>

@@ -1,6 +1,6 @@
 {
-  "name": "Tutor de MMC Interativo",
-  "description": "Um tutor de matemática inteligente que guia o aluno passo a passo no cálculo do Mínimo Múltiplo Comum (MMC) através de metodologias ativas e fatoração simultânea.",
+  "name": "Capitão Matemática",
+  "description": "O Capitão Matemática guia o aluno passo a passo no cálculo do Mínimo Múltiplo Comum (MMC) através de metodologias ativas e fatoração simultânea.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
