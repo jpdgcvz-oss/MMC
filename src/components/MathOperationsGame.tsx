@@ -122,6 +122,15 @@ const PRESETS: OperationPreset[] = [
     difficulty: "Difícil"
   },
   {
+    id: "mul-two-digits",
+    type: "MUL",
+    num1: 34,
+    num2: 12,
+    title: "Multiplicação com 2 Algarismos",
+    description: "Resolva primeiro toda a multiplicação das unidades, depois das dezenas e faça a soma final das duas parcelas!",
+    difficulty: "Difícil"
+  },
+  {
     id: "div-easy",
     type: "DIV",
     num1: 48,
@@ -193,6 +202,11 @@ export default function MathOperationsGame({ onBackToMenu }: MathOperationsGameP
   const [gridResult, setGridResult] = useState<string[]>(["", "", "", ""]); // Answer digits
   const [gridCarries, setGridCarries] = useState<string[]>(["", "", "", ""]); // "Vai um" carry values
   
+  // 2-Digit Multiplication Specific States
+  const [mulStep, setMulStep] = useState<"PARTIAL1" | "PARTIAL2" | "ADDITION">("PARTIAL1");
+  const [gridMulRow1, setGridMulRow1] = useState<string[]>(["", "", "", ""]); // 1st partial product (top * bottom units)
+  const [gridMulRow2, setGridMulRow2] = useState<string[]>(["", "", "", ""]); // 2nd partial product (top * bottom tens)
+  
   // Borrowing tracking for subtraction
   // index points to column: 0=Thousands, 1=Hundreds, 2=Tens, 3=Units
   const [borrowedFrom, setBorrowedFrom] = useState<boolean[]>([false, false, false, false]);
@@ -212,37 +226,47 @@ export default function MathOperationsGame({ onBackToMenu }: MathOperationsGameP
     let i = 0;
     let prevRemainder = 0;
 
+    let firstGroupSize = 1;
+    if (parseInt(digits[0]) < n2 && digits.length > 1) {
+      firstGroupSize = 2;
+      if (parseInt(digits.slice(0, 2).join("")) < n2 && digits.length > 2) {
+        firstGroupSize = 3;
+      }
+    }
+
     while (i < digits.length) {
       const digit = digits[i];
       if (i === 0) {
         // First digit
-        const digitVal = parseInt(digit);
-        if (digitVal < n2 && digits.length > 1) {
-          // Group first two digits
-          const nextDigit = digits[i + 1];
-          const groupedVal = parseInt(digit + nextDigit);
+        if (firstGroupSize > 1) {
+          const groupedVal = parseInt(digits.slice(0, firstGroupSize).join(""));
           const q = Math.floor(groupedVal / n2);
           const r = groupedVal % n2;
           
+          const firstDigitCol = digits.length === 3 ? 1 : digits.length === 2 ? 2 : 3;
+          const quotientColIdx = firstDigitCol + firstGroupSize - 1;
+
           steps.push({
             type: "GROUP",
-            message: `Como o primeiro algarismo **${digit}** é menor que o divisor **${n2}**, nós juntamos com o próximo algarismo **${nextDigit}** para formar o número **${groupedVal}**.`,
+            message: firstGroupSize === 3 
+              ? `Como o primeiro algarismo **${digits[0]}** e o segundo **${digits[1]}** são menores que o divisor **${n2}**, nós juntamos com o terceiro algarismo **${digits[2]}** para formar o número **${groupedVal}**.`
+              : `Como o primeiro algarismo **${digits[0]}** é menor que o divisor **${n2}**, nós juntamos com o próximo algarismo **${digits[1]}** para formar o número **${groupedVal}**.`,
             options: [
               {
                 id: `div-group-${i}`,
-                label: `Considerar ${groupedVal} para iniciar a divisão`,
+                label: `Dividir ${groupedVal}`,
                 isCorrect: true,
-                value: { result: "", groupIdx: i + 1 }
+                value: { result: "", groupIdx: firstGroupSize - 1 }
               },
               {
                 id: `div-group-wrong-${i}`,
-                label: `Dividir apenas ${digit} por ${n2}`,
+                label: `Dividir ${digits[0]}`,
                 isCorrect: false,
                 feedback: `Não é possível dividir um número menor por um divisor maior nas contas de divisão inteira escolar! Junte os algarismos.`
               },
               {
                 id: `div-group-wrong-2-${i}`,
-                label: `Tentar dividir todo o número ${n1}`,
+                label: `Dividir tudo`,
                 isCorrect: false,
                 feedback: `Vá passo a passo! Primeiro, separe o menor grupo de algarismos da esquerda que seja maior ou igual a ${n2}.`
               }
@@ -255,19 +279,19 @@ export default function MathOperationsGame({ onBackToMenu }: MathOperationsGameP
             options: [
               {
                 id: `div-divide-${i}`,
-                label: `Resultado: ${q} (pois ${q} × ${n2} = ${q * n2})`,
+                label: `Dá ${q}`,
                 isCorrect: true,
-                value: { result: q.toString(), colIdx: 2 } // Tens column (index 2)
+                value: { result: q.toString(), colIdx: quotientColIdx }
               },
               {
                 id: `div-divide-wrong-1-${i}`,
-                label: `Resultado: ${q + 1} (pois ${(q + 1)} × ${n2} = ${(q + 1) * n2})`,
+                label: `Dá ${q + 1}`,
                 isCorrect: false,
                 feedback: `${q + 1} × ${n2} = ${(q + 1) * n2}, que passa de ${groupedVal}! Escolha um valor menor.`
               },
               {
                 id: `div-divide-wrong-2-${i}`,
-                label: `Resultado: ${q - 1 >= 0 ? q - 1 : q + 2}`,
+                label: `Dá ${q - 1 >= 0 ? q - 1 : q + 2}`,
                 isCorrect: false,
                 feedback: `Podemos chegar mais perto de ${groupedVal} sem passar dele!`
               }
@@ -282,7 +306,7 @@ export default function MathOperationsGame({ onBackToMenu }: MathOperationsGameP
                 id: `div-sub-${i}`,
                 label: `Resto: ${r}`,
                 isCorrect: true,
-                value: { result: "", remainder: r.toString(), remainderColIdx: 2 }
+                value: { result: "", remainder: r.toString(), remainderColIdx: quotientColIdx }
               },
               {
                 id: `div-sub-wrong-${i}`,
@@ -300,9 +324,10 @@ export default function MathOperationsGame({ onBackToMenu }: MathOperationsGameP
           });
 
           prevRemainder = r;
-          i += 2; // skip index 1 since we grouped 0 and 1
+          i += firstGroupSize; // skip grouped indices
         } else {
           // Normal divide of first digit
+          const digitVal = parseInt(digit);
           const q = Math.floor(digitVal / n2);
           const r = digitVal % n2;
           const colIdx = digits.length === 3 ? 1 : digits.length === 2 ? 2 : 3;
@@ -313,19 +338,19 @@ export default function MathOperationsGame({ onBackToMenu }: MathOperationsGameP
             options: [
               {
                 id: `div-divide-${i}`,
-                label: `Resultado: ${q} (pois ${q} × ${n2} = ${q * n2})`,
+                label: `Dá ${q}`,
                 isCorrect: true,
                 value: { result: q.toString(), colIdx: colIdx }
               },
               {
                 id: `div-divide-wrong-1-${i}`,
-                label: `Resultado: ${q + 1} (pois ${(q + 1)} × ${n2} = ${(q + 1) * n2})`,
+                label: `Dá ${q + 1}`,
                 isCorrect: false,
                 feedback: `${q + 1} × ${n2} passa de ${digit}!`
               },
               {
                 id: `div-divide-wrong-2-${i}`,
-                label: `Resultado: ${q - 1 >= 0 ? q - 1 : q + 2}`,
+                label: `Dá ${q - 1 >= 0 ? q - 1 : q + 2}`,
                 isCorrect: false,
                 feedback: `Podemos chegar mais perto de ${digit}!`
               }
@@ -368,13 +393,13 @@ export default function MathOperationsGame({ onBackToMenu }: MathOperationsGameP
           options: [
             {
               id: `div-bring-${i}`,
-              label: `Baixar o ${nextDigit} para formar ${combinedVal}`,
+              label: `Baixar o ${nextDigit}`,
               isCorrect: true,
               value: { result: "" }
             },
             {
               id: `div-bring-wrong-${i}`,
-              label: `Dividir apenas ${nextDigit}`,
+              label: `Dividir só ${nextDigit}`,
               isCorrect: false,
               feedback: `Não se esqueça de juntar o dígito baixado com o resto da operação anterior!`
             }
@@ -387,19 +412,19 @@ export default function MathOperationsGame({ onBackToMenu }: MathOperationsGameP
           options: [
             {
               id: `div-divide-${i}`,
-              label: `Resultado: ${q} (pois ${q} × ${n2} = ${q * n2})`,
+              label: `Dá ${q}`,
               isCorrect: true,
               value: { result: q.toString(), colIdx: colIdx }
             },
             {
               id: `div-divide-wrong-1-${i}`,
-              label: `Resultado: ${q + 1}`,
+              label: `Dá ${q + 1}`,
               isCorrect: false,
               feedback: `Passa de ${combinedVal}!`
             },
             {
               id: `div-divide-wrong-2-${i}`,
-              label: `Resultado: ${q - 1 >= 0 ? q - 1 : q + 2}`,
+              label: `Dá ${q - 1 >= 0 ? q - 1 : q + 2}`,
               isCorrect: false,
               feedback: `Podemos chegar mais perto de ${combinedVal} sem passar!`
             }
@@ -447,7 +472,14 @@ export default function MathOperationsGame({ onBackToMenu }: MathOperationsGameP
       };
     }
 
-    const isFirstGrouped = parseInt(digits[0]) < divisor && digits.length > 1;
+    let groupSize = 1;
+    if (parseInt(digits[0]) < divisor && digits.length > 1) {
+      groupSize = 2;
+      if (parseInt(digits.slice(0, 2).join("")) < divisor && digits.length > 2) {
+        groupSize = 3;
+      }
+    }
+    const isFirstGrouped = groupSize > 1;
     
     // Let's determine which steps have been reached or completed
     const isStepReached = (type: string, occurrence: number) => {
@@ -504,7 +536,6 @@ export default function MathOperationsGame({ onBackToMenu }: MathOperationsGameP
     }
 
     const stages: SubtractionStage[] = [];
-    const groupSize = isFirstGrouped ? 2 : 1;
 
     // Stage 1: First Division
     const val1 = parseInt(digits.slice(0, groupSize).join(""));
@@ -523,7 +554,7 @@ export default function MathOperationsGame({ onBackToMenu }: MathOperationsGameP
       showRemainder: isStepCompleted("SUBTRACT", 0) || isStepReached("BRING_DOWN", 0) || isStepReached("DIVIDE", 1) || gameStage === "COMPLETED",
       showBringDown: isStepReached("BRING_DOWN", 0) && digits.length > groupSize,
       bringDownDigit: digits[groupSize],
-      bringDownFromIdx: groupSize,
+      bringDownFromIdx: groupSize + 1,
       activeType: divSteps[divStepIndex]?.type === "DIVIDE" && divStepIndex <= 1 ? "DIVIDE" :
                   divSteps[divStepIndex]?.type === "SUBTRACT" && divStepIndex <= 2 ? "SUBTRACT" : undefined
     });
@@ -548,7 +579,7 @@ export default function MathOperationsGame({ onBackToMenu }: MathOperationsGameP
         showRemainder: isStepCompleted("SUBTRACT", 1) || (hasStage3 && isStepReached("BRING_DOWN", 1)) || isStepReached("DIVIDE", 2) || gameStage === "COMPLETED",
         showBringDown: hasStage3 && isStepReached("BRING_DOWN", 1),
         bringDownDigit: hasStage3 ? digits[groupSize + 1] : undefined,
-        bringDownFromIdx: hasStage3 ? groupSize + 1 : undefined,
+        bringDownFromIdx: hasStage3 ? groupSize + 2 : undefined,
         activeType: divSteps[divStepIndex]?.type === "BRING_DOWN" && divSteps[divStepIndex]?.options[0]?.id?.includes(`div-bring-${groupSize}`) ? "BRING_DOWN" :
                     divSteps[divStepIndex]?.type === "DIVIDE" && divSteps[divStepIndex]?.options[0]?.id?.includes(`div-divide-${groupSize}`) ? "DIVIDE" :
                     divSteps[divStepIndex]?.type === "SUBTRACT" && divSteps[divStepIndex]?.options[0]?.id?.includes(`div-sub-${groupSize}`) ? "SUBTRACT" : undefined
@@ -604,23 +635,20 @@ export default function MathOperationsGame({ onBackToMenu }: MathOperationsGameP
 
     const cells: GridCell[] = [];
     const digits = num1.toString().split("");
-    // Pad dividend to fit columns 1, 2, 3 nicely
-    const dividendPadded = digits.length === 3 ? ["", digits[0], digits[1], digits[2]] : ["", "", digits[0], digits[1]];
+    const firstDigitCol = 1;
     
     // Row 0: Dividend
-    for (let c = 1; c <= 3; c++) {
-      const digit = dividendPadded[c];
-      if (digit !== "") {
-        const isGrouped = model.isFirstGrouped ? (c === 1 || c === 2) : (c === 2);
-        const isCurrentActive = model.stages[0]?.activeType === "DIVIDE" && isGrouped;
-        cells.push({
-          row: 0,
-          col: c,
-          content: digit,
-          isHighlighted: isCurrentActive,
-          className: `border border-indigo-100 rounded-xl bg-white text-indigo-950 font-extrabold text-lg flex items-center justify-center w-10 h-10 shadow-sm`
-        });
-      }
+    for (let c = 1; c <= digits.length; c++) {
+      const digit = digits[c - 1];
+      const isGrouped = c >= firstDigitCol && c < firstDigitCol + model.groupSize;
+      const isCurrentActive = model.stages[0]?.activeType === "DIVIDE" && isGrouped;
+      cells.push({
+        row: 0,
+        col: c,
+        content: digit,
+        isHighlighted: isCurrentActive,
+        className: `border border-indigo-100 rounded-xl bg-white text-indigo-950 font-extrabold text-lg flex items-center justify-center w-10 h-10 shadow-sm`
+      });
     }
 
     // Bracket Line and Divisor on Col 5 Row 0
@@ -656,12 +684,9 @@ export default function MathOperationsGame({ onBackToMenu }: MathOperationsGameP
 
         const subDigits = stage.subValue.split("");
         let subCols: number[] = [];
-        if (sIdx === 0) {
-          subCols = model.isFirstGrouped ? [1, 2] : [2];
-        } else if (sIdx === 1) {
-          subCols = model.isFirstGrouped ? [2, 3] : [2, 3];
-        } else {
-          subCols = [2, 3];
+        const endCol = firstDigitCol + model.groupSize + sIdx - 1;
+        for (let d = 0; d < subDigits.length; d++) {
+          subCols.unshift(endCol - d);
         }
 
         subDigits.forEach((d, dIdx) => {
@@ -679,25 +704,55 @@ export default function MathOperationsGame({ onBackToMenu }: MathOperationsGameP
       // Remainder line
       if (stage.showRemainder) {
         const remRowIdx = sIdx * 2 + 2;
-        const remCol = sIdx === 0 ? (model.isFirstGrouped ? 2 : 2) : 3;
+        const remCol = firstDigitCol + model.groupSize + sIdx - 1;
         
+        const nextStage = model.stages[sIdx + 1];
+        const isNextStageDividing = nextStage?.activeType === "DIVIDE";
+        const isCurrentActiveBringDown = stage.activeType === "BRING_DOWN";
+
+        let remClassName = `font-extrabold text-lg flex items-center justify-center w-10 h-10 shadow-sm transition-all `;
+        
+        if (isCurrentActiveBringDown) {
+          // Unified with brought down digit on right (rounded left only, border-r-0)
+          remClassName += `bg-amber-100 border-2 border-r-0 border-amber-400 rounded-l-xl rounded-r-none text-amber-800 animate-pulse`;
+        } else if (isNextStageDividing) {
+          // Unified in next stage division (rounded left only, border-r-0, indigo theme)
+          remClassName += `bg-indigo-100 border-2 border-r-0 border-indigo-400 rounded-l-xl rounded-r-none text-indigo-900`;
+        } else {
+          // Normal remainder style
+          remClassName += `bg-emerald-50/70 border border-emerald-100 rounded-xl text-emerald-600`;
+        }
+
         cells.push({
           row: remRowIdx,
           col: remCol,
           content: stage.remainder,
           isHighlighted: stage.activeType === "SUBTRACT",
-          className: `text-emerald-600 font-extrabold text-lg bg-emerald-50/50 border border-emerald-100 rounded-xl flex items-center justify-center w-10 h-10 shadow-sm`
+          className: remClassName
         });
 
         // Bring down digit next to remainder
         if (stage.showBringDown && stage.bringDownDigit) {
           const downCol = stage.bringDownFromIdx || 3;
+          
+          let downClassName = `font-extrabold text-lg flex items-center justify-center w-10 h-10 shadow-sm transition-all `;
+          if (isCurrentActiveBringDown) {
+            // Unified with remainder on left (rounded right only, border-l-0)
+            downClassName += `bg-amber-100 border-2 border-l-0 border-amber-400 rounded-r-xl rounded-l-none text-amber-800 animate-pulse`;
+          } else if (isNextStageDividing) {
+            // Unified in next stage division (rounded right only, border-l-0, indigo theme)
+            downClassName += `bg-indigo-100 border-2 border-l-0 border-indigo-400 rounded-r-xl rounded-l-none text-indigo-900`;
+          } else {
+            // Normal bring down style
+            downClassName += `bg-amber-50 border border-amber-200 rounded-xl text-amber-600`;
+          }
+
           cells.push({
             row: remRowIdx,
             col: downCol,
             content: stage.bringDownDigit,
             isHighlighted: stage.activeType === "BRING_DOWN",
-            className: `text-amber-600 font-extrabold text-lg bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-center w-10 h-10 shadow-sm animate-pulse`,
+            className: downClassName,
             showArrow: true,
             arrowStartRow: 1,
             arrowEndRow: remRowIdx
@@ -757,7 +812,7 @@ export default function MathOperationsGame({ onBackToMenu }: MathOperationsGameP
       let idx = 1;
       while (result.length < 4) {
         const val = Math.floor(Math.random() * 10);
-        const label = `Resultado: ${val}`;
+        const label = `${val}`;
         if (!seen.has(label)) {
           seen.add(label);
           result.push({
@@ -781,32 +836,56 @@ export default function MathOperationsGame({ onBackToMenu }: MathOperationsGameP
       const expectedDigitResult = colSum % 10;
       const expectedCarryOut = Math.floor(colSum / 10);
 
-      const opts: OptionItem[] = [
-        {
-          id: "add-correct",
-          label: `Resultado: ${expectedDigitResult}${expectedCarryOut > 0 ? ` (Sobe ${expectedCarryOut})` : ""}`,
-          isCorrect: true,
-          value: { result: expectedDigitResult.toString(), carry: expectedCarryOut.toString() }
-        },
-        {
-          id: "add-wrong-carry",
-          label: `Resultado: ${expectedDigitResult}${expectedCarryOut === 0 ? " (Sobe 1)" : ""}`,
-          isCorrect: false,
-          value: { result: expectedDigitResult.toString(), carry: expectedCarryOut === 0 ? "1" : "0" }
-        },
-        {
-          id: "add-wrong-digit-1",
-          label: `Resultado: ${(expectedDigitResult + 1) % 10}${expectedCarryOut > 0 ? ` (Sobe ${expectedCarryOut})` : ""}`,
-          isCorrect: false,
-          value: { result: ((expectedDigitResult + 1) % 10).toString(), carry: expectedCarryOut.toString() }
-        },
-        {
-          id: "add-wrong-digit-2",
-          label: `Resultado: ${(expectedDigitResult + 2) % 10}${expectedCarryOut > 0 ? ` (Sobe ${expectedCarryOut})` : ""}`,
-          isCorrect: false,
-          value: { result: ((expectedDigitResult + 2) % 10).toString(), carry: expectedCarryOut.toString() }
-        }
-      ];
+      let opts: OptionItem[] = [];
+      if (expectedCarryOut > 0) {
+        opts = [
+          {
+            id: "add-correct",
+            label: `${expectedDigitResult} (Sobe ${expectedCarryOut})`,
+            isCorrect: true,
+            value: { result: expectedDigitResult.toString(), carry: expectedCarryOut.toString() }
+          },
+          {
+            id: "add-wrong-carry",
+            label: `${expectedDigitResult}`,
+            isCorrect: false,
+            value: { result: expectedDigitResult.toString(), carry: "0" }
+          },
+          {
+            id: "add-wrong-digit-1",
+            label: `${(expectedDigitResult + 1) % 10} (Sobe ${expectedCarryOut})`,
+            isCorrect: false,
+            value: { result: ((expectedDigitResult + 1) % 10).toString(), carry: expectedCarryOut.toString() }
+          },
+          {
+            id: "add-wrong-digit-2",
+            label: `${(expectedDigitResult + 2) % 10} (Sobe ${expectedCarryOut})`,
+            isCorrect: false,
+            value: { result: ((expectedDigitResult + 2) % 10).toString(), carry: expectedCarryOut.toString() }
+          }
+        ];
+      } else {
+        opts = [
+          {
+            id: "add-correct",
+            label: `${expectedDigitResult}`,
+            isCorrect: true,
+            value: { result: expectedDigitResult.toString(), carry: "0" }
+          },
+          {
+            id: "add-wrong-digit-1",
+            label: `${(expectedDigitResult + 1) % 10}`,
+            isCorrect: false,
+            value: { result: ((expectedDigitResult + 1) % 10).toString(), carry: "0" }
+          },
+          {
+            id: "add-wrong-digit-2",
+            label: `${(expectedDigitResult + 2) % 10}`,
+            isCorrect: false,
+            value: { result: ((expectedDigitResult + 2) % 10).toString(), carry: "0" }
+          }
+        ];
+      }
 
       setCurrentOptions(shuffleArray(uniqueOptions(opts)));
     } 
@@ -821,25 +900,25 @@ export default function MathOperationsGame({ onBackToMenu }: MathOperationsGameP
         const opts: OptionItem[] = [
           {
             id: "sub-borrow-correct",
-            label: `Pegar emprestado da coluna à esquerda (✂️)`,
+            label: `Pegar emprestado (✂️)`,
             isCorrect: true,
             value: { result: "", borrow: true }
           },
           {
             id: "sub-borrow-wrong-1",
-            label: `Calcular ${d2} - ${computedD1} = ${d2 - computedD1} (Ordem Invertida)`,
+            label: `Calcular ${d2} - ${computedD1}`,
             isCorrect: false,
             value: { result: (d2 - computedD1).toString() }
           },
           {
             id: "sub-borrow-wrong-2",
-            label: `Colocar resultado 0 nesta coluna`,
+            label: `Colocar zero (0)`,
             isCorrect: false,
             value: { result: "0" }
           },
           {
             id: "sub-borrow-wrong-3",
-            label: `Somar os valores: ${computedD1} + ${d2} = ${computedD1 + d2}`,
+            label: `Somar: ${computedD1} + ${d2}`,
             isCorrect: false,
             value: { result: ((computedD1 + d2) % 10).toString() }
           }
@@ -850,25 +929,25 @@ export default function MathOperationsGame({ onBackToMenu }: MathOperationsGameP
         const opts: OptionItem[] = [
           {
             id: "sub-calc-correct",
-            label: `Resultado: ${expectedResult}`,
+            label: `${expectedResult}`,
             isCorrect: true,
             value: { result: expectedResult.toString() }
           },
           {
             id: "sub-calc-wrong-1",
-            label: `Resultado: ${expectedResult + 1}`,
+            label: `${expectedResult + 1}`,
             isCorrect: false,
             value: { result: (expectedResult + 1).toString() }
           },
           {
             id: "sub-calc-wrong-2",
-            label: `Resultado: ${expectedResult === 0 ? 9 : expectedResult - 1}`,
+            label: `${expectedResult === 0 ? 9 : expectedResult - 1}`,
             isCorrect: false,
             value: { result: (expectedResult === 0 ? 9 : expectedResult - 1).toString() }
           },
           {
             id: "sub-calc-wrong-3",
-            label: `Resultado: ${expectedResult + 2}`,
+            label: `${expectedResult + 2}`,
             isCorrect: false,
             value: { result: (expectedResult + 2).toString() }
           }
@@ -878,44 +957,254 @@ export default function MathOperationsGame({ onBackToMenu }: MathOperationsGameP
     } 
     
     else if (opType === "MUL") {
-      const digit1 = parseInt(expectedRow1[colIdx] || "0");
-      const multiplier = parseInt(expectedRow2[3] || "0");
-      const carryIn = parseInt(gridCarries[colIdx] || "0");
+      if (num2 >= 10) {
+        if (mulStep === "PARTIAL1") {
+          const digit1 = parseInt(expectedRow1[colIdx] || "0");
+          const multiplier = num2 % 10;
+          const carryIn = parseInt(gridCarries[colIdx] || "0");
 
-      const product = (digit1 * multiplier) + carryIn;
-      const expectedDigitResult = product % 10;
-      const expectedCarryOut = Math.floor(product / 10);
+          const product = (digit1 * multiplier) + carryIn;
+          const expectedDigitResult = product % 10;
+          const expectedCarryOut = Math.floor(product / 10);
 
-      const opts: OptionItem[] = [
-        {
-          id: "mul-correct",
-          label: `Resultado: ${expectedDigitResult}${expectedCarryOut > 0 ? ` (Sobe ${expectedCarryOut})` : ""}`,
-          isCorrect: true,
-          value: { result: expectedDigitResult.toString(), carry: expectedCarryOut.toString() }
-        },
-        {
-          id: "mul-wrong-carry",
-          label: `Resultado: ${expectedDigitResult}${expectedCarryOut === 0 ? " (Sobe 1)" : ""}`,
-          isCorrect: false,
-          value: { result: expectedDigitResult.toString(), carry: expectedCarryOut === 0 ? "1" : "0" }
-        },
-        {
-          id: "mul-wrong-digit-1",
-          label: `Resultado: ${(expectedDigitResult + 1) % 10}${expectedCarryOut > 0 ? ` (Sobe ${expectedCarryOut})` : ""}`,
-          isCorrect: false,
-          value: { result: ((expectedDigitResult + 1) % 10).toString(), carry: expectedCarryOut.toString() }
-        },
-        {
-          id: "mul-wrong-digit-2",
-          label: `Resultado: ${(expectedDigitResult + 2) % 10}${expectedCarryOut > 0 ? ` (Sobe ${expectedCarryOut})` : ""}`,
-          isCorrect: false,
-          value: { result: ((expectedDigitResult + 2) % 10).toString(), carry: expectedCarryOut.toString() }
+          let opts: OptionItem[] = [];
+          if (expectedCarryOut > 0) {
+            opts = [
+              {
+                id: "mul-p1-correct",
+                label: `${expectedDigitResult} (Sobe ${expectedCarryOut})`,
+                isCorrect: true,
+                value: { result: expectedDigitResult.toString(), carry: expectedCarryOut.toString() }
+              },
+              {
+                id: "mul-p1-wrong-carry",
+                label: `${expectedDigitResult}`,
+                isCorrect: false,
+                value: { result: expectedDigitResult.toString(), carry: "0" }
+              },
+              {
+                id: "mul-p1-wrong-digit-1",
+                label: `${(expectedDigitResult + 1) % 10} (Sobe ${expectedCarryOut})`,
+                isCorrect: false,
+                value: { result: ((expectedDigitResult + 1) % 10).toString(), carry: expectedCarryOut.toString() }
+              },
+              {
+                id: "mul-p1-wrong-digit-2",
+                label: `${(expectedDigitResult + 2) % 10} (Sobe ${expectedCarryOut})`,
+                isCorrect: false,
+                value: { result: ((expectedDigitResult + 2) % 10).toString(), carry: expectedCarryOut.toString() }
+              }
+            ];
+          } else {
+            opts = [
+              {
+                id: "mul-p1-correct",
+                label: `${expectedDigitResult}`,
+                isCorrect: true,
+                value: { result: expectedDigitResult.toString(), carry: "0" }
+              },
+              {
+                id: "mul-p1-wrong-digit-1",
+                label: `${(expectedDigitResult + 1) % 10}`,
+                isCorrect: false,
+                value: { result: ((expectedDigitResult + 1) % 10).toString(), carry: "0" }
+              },
+              {
+                id: "mul-p1-wrong-digit-2",
+                label: `${(expectedDigitResult + 2) % 10}`,
+                isCorrect: false,
+                value: { result: ((expectedDigitResult + 2) % 10).toString(), carry: "0" }
+              }
+            ];
+          }
+          setCurrentOptions(shuffleArray(uniqueOptions(opts)));
+        } else if (mulStep === "PARTIAL2") {
+          const topDigitCol = colIdx + 1;
+          const digit1 = parseInt(expectedRow1[topDigitCol] || "0");
+          const multiplier = Math.floor(num2 / 10);
+          const carryIn = parseInt(gridCarries[colIdx] || "0");
+
+          const product = (digit1 * multiplier) + carryIn;
+          const expectedDigitResult = product % 10;
+          const expectedCarryOut = Math.floor(product / 10);
+
+          let opts: OptionItem[] = [];
+          if (expectedCarryOut > 0) {
+            opts = [
+              {
+                id: "mul-p2-correct",
+                label: `${expectedDigitResult} (Sobe ${expectedCarryOut})`,
+                isCorrect: true,
+                value: { result: expectedDigitResult.toString(), carry: expectedCarryOut.toString() }
+              },
+              {
+                id: "mul-p2-wrong-carry",
+                label: `${expectedDigitResult}`,
+                isCorrect: false,
+                value: { result: expectedDigitResult.toString(), carry: "0" }
+              },
+              {
+                id: "mul-p2-wrong-digit-1",
+                label: `${(expectedDigitResult + 1) % 10} (Sobe ${expectedCarryOut})`,
+                isCorrect: false,
+                value: { result: ((expectedDigitResult + 1) % 10).toString(), carry: expectedCarryOut.toString() }
+              },
+              {
+                id: "mul-p2-wrong-digit-2",
+                label: `${(expectedDigitResult + 2) % 10} (Sobe ${expectedCarryOut})`,
+                isCorrect: false,
+                value: { result: ((expectedDigitResult + 2) % 10).toString(), carry: expectedCarryOut.toString() }
+              }
+            ];
+          } else {
+            opts = [
+              {
+                id: "mul-p2-correct",
+                label: `${expectedDigitResult}`,
+                isCorrect: true,
+                value: { result: expectedDigitResult.toString(), carry: "0" }
+              },
+              {
+                id: "mul-p2-wrong-digit-1",
+                label: `${(expectedDigitResult + 1) % 10}`,
+                isCorrect: false,
+                value: { result: ((expectedDigitResult + 1) % 10).toString(), carry: "0" }
+              },
+              {
+                id: "mul-p2-wrong-digit-2",
+                label: `${(expectedDigitResult + 2) % 10}`,
+                isCorrect: false,
+                value: { result: ((expectedDigitResult + 2) % 10).toString(), carry: "0" }
+              }
+            ];
+          }
+          setCurrentOptions(shuffleArray(uniqueOptions(opts)));
+        } else if (mulStep === "ADDITION") {
+          const digit1 = parseInt(gridMulRow1[colIdx] || "0");
+          const val2Raw = gridMulRow2[colIdx] || "0";
+          const digit2 = val2Raw === "+" ? 0 : parseInt(val2Raw || "0");
+          const carryIn = parseInt(gridCarries[colIdx] || "0");
+
+          const colSum = digit1 + digit2 + carryIn;
+          const expectedDigitResult = colSum % 10;
+          const expectedCarryOut = Math.floor(colSum / 10);
+
+          let opts: OptionItem[] = [];
+          if (expectedCarryOut > 0) {
+            opts = [
+              {
+                id: "mul-add-correct",
+                label: `${expectedDigitResult} (Sobe ${expectedCarryOut})`,
+                isCorrect: true,
+                value: { result: expectedDigitResult.toString(), carry: expectedCarryOut.toString() }
+              },
+              {
+                id: "mul-add-wrong-carry",
+                label: `${expectedDigitResult}`,
+                isCorrect: false,
+                value: { result: expectedDigitResult.toString(), carry: "0" }
+              },
+              {
+                id: "mul-add-wrong-digit-1",
+                label: `${(expectedDigitResult + 1) % 10} (Sobe ${expectedCarryOut})`,
+                isCorrect: false,
+                value: { result: ((expectedDigitResult + 1) % 10).toString(), carry: expectedCarryOut.toString() }
+              },
+              {
+                id: "mul-add-wrong-digit-2",
+                label: `${(expectedDigitResult + 2) % 10} (Sobe ${expectedCarryOut})`,
+                isCorrect: false,
+                value: { result: ((expectedDigitResult + 2) % 10).toString(), carry: expectedCarryOut.toString() }
+              }
+            ];
+          } else {
+            opts = [
+              {
+                id: "mul-add-correct",
+                label: `${expectedDigitResult}`,
+                isCorrect: true,
+                value: { result: expectedDigitResult.toString(), carry: "0" }
+              },
+              {
+                id: "mul-add-wrong-digit-1",
+                label: `${(expectedDigitResult + 1) % 10}`,
+                isCorrect: false,
+                value: { result: ((expectedDigitResult + 1) % 10).toString(), carry: "0" }
+              },
+              {
+                id: "mul-add-wrong-digit-2",
+                label: `${(expectedDigitResult + 2) % 10}`,
+                isCorrect: false,
+                value: { result: ((expectedDigitResult + 2) % 10).toString(), carry: "0" }
+              }
+            ];
+          }
+          setCurrentOptions(shuffleArray(uniqueOptions(opts)));
         }
-      ];
+      } else {
+        const digit1 = parseInt(expectedRow1[colIdx] || "0");
+        const multiplier = num2;
+        const carryIn = parseInt(gridCarries[colIdx] || "0");
 
-      setCurrentOptions(shuffleArray(uniqueOptions(opts)));
+        const product = (digit1 * multiplier) + carryIn;
+        const expectedDigitResult = product % 10;
+        const expectedCarryOut = Math.floor(product / 10);
+
+        let opts: OptionItem[] = [];
+        if (expectedCarryOut > 0) {
+          opts = [
+            {
+              id: "mul-correct",
+              label: `${expectedDigitResult} (Sobe ${expectedCarryOut})`,
+              isCorrect: true,
+              value: { result: expectedDigitResult.toString(), carry: expectedCarryOut.toString() }
+            },
+            {
+              id: "mul-wrong-carry",
+              label: `${expectedDigitResult}`,
+              isCorrect: false,
+              value: { result: expectedDigitResult.toString(), carry: "0" }
+            },
+            {
+              id: "mul-wrong-digit-1",
+              label: `${(expectedDigitResult + 1) % 10} (Sobe ${expectedCarryOut})`,
+              isCorrect: false,
+              value: { result: ((expectedDigitResult + 1) % 10).toString(), carry: expectedCarryOut.toString() }
+            },
+            {
+              id: "mul-wrong-digit-2",
+              label: `${(expectedDigitResult + 2) % 10} (Sobe ${expectedCarryOut})`,
+              isCorrect: false,
+              value: { result: ((expectedDigitResult + 2) % 10).toString(), carry: expectedCarryOut.toString() }
+            }
+          ];
+        } else {
+          opts = [
+            {
+              id: "mul-correct",
+              label: `${expectedDigitResult}`,
+              isCorrect: true,
+              value: { result: expectedDigitResult.toString(), carry: "0" }
+            },
+            {
+              id: "mul-wrong-digit-1",
+              label: `${(expectedDigitResult + 1) % 10}`,
+              isCorrect: false,
+              value: { result: ((expectedDigitResult + 1) % 10).toString(), carry: "0" }
+            },
+            {
+              id: "mul-wrong-digit-2",
+              label: `${(expectedDigitResult + 2) % 10}`,
+              isCorrect: false,
+              value: { result: ((expectedDigitResult + 2) % 10).toString(), carry: "0" }
+            }
+          ];
+        }
+
+        setCurrentOptions(shuffleArray(uniqueOptions(opts)));
+      }
     }
-  }, [activeColumn, gameStage, borrowedFrom, hasExtraTen, opType, num1, num2]);
+  }, [activeColumn, gameStage, borrowedFrom, hasExtraTen, opType, num1, num2, mulStep, gridMulRow1, gridMulRow2]);
 
   // Initialize selected preset
   const handleStartPreset = (preset: OperationPreset) => {
@@ -948,6 +1237,9 @@ export default function MathOperationsGame({ onBackToMenu }: MathOperationsGameP
     setSolvingErrors({});
     setDivStepIndex(0);
     setDivSteps([]);
+    setMulStep("PARTIAL1");
+    setGridMulRow1(["", "", "", ""]);
+    setGridMulRow2(["", "", "", ""]);
     
     if (type === "DIV") {
       setGameStage("SOLVING");
@@ -955,7 +1247,7 @@ export default function MathOperationsGame({ onBackToMenu }: MathOperationsGameP
       setDivSteps(steps);
       setDivStepIndex(0);
       setTutorMessage(steps[0].message);
-      setCurrentOptions(steps[0].options);
+      setCurrentOptions(shuffleArray(steps[0].options));
       return;
     }
 
@@ -1001,7 +1293,12 @@ export default function MathOperationsGame({ onBackToMenu }: MathOperationsGameP
 
     const errorsRow1 = r1.map((val, idx) => val !== expectedRow1[idx]);
     const errorsRow2 = r2.map((val, idx) => val !== expectedRow2[idx]);
-    const errorOperator = op !== expectedOperator;
+    
+    let errorOperator = op !== expectedOperator;
+    if (opType === "MUL") {
+      const allowedMulOperators = ["×", "x", "X", "*"];
+      errorOperator = !allowedMulOperators.includes(op);
+    }
 
     const hasErrors = errorsRow1.some(e => e) || errorsRow2.some(e => e) || errorOperator;
 
@@ -1015,7 +1312,9 @@ export default function MathOperationsGame({ onBackToMenu }: MathOperationsGameP
       // Analyze where they went wrong
       if (errorOperator) {
         setTutorMessage(
-          `Opa! O operador que você escolheu está incorreto ou está faltando. Para esta conta, use o sinal **${expectedOperator}**.`
+          opType === "MUL"
+            ? `Opa! O operador que você escolheu está incorreto ou está faltando. Para esta multiplicação, use o sinal **×**, **x** ou **\***.`
+            : `Opa! O operador que você escolheu está incorreto ou está faltando. Para esta conta, use o sinal **${expectedOperator}**.`
         );
       } else {
         setTutorMessage(
@@ -1031,7 +1330,7 @@ export default function MathOperationsGame({ onBackToMenu }: MathOperationsGameP
         setDivSteps(steps);
         setDivStepIndex(0);
         setTutorMessage(steps[0].message);
-        setCurrentOptions(steps[0].options);
+        setCurrentOptions(shuffleArray(steps[0].options));
         
         const firstCol = expectedRow1.findIndex(digit => digit !== "");
         setActiveColumn(firstCol >= 0 ? firstCol : 2);
@@ -1052,7 +1351,14 @@ export default function MathOperationsGame({ onBackToMenu }: MathOperationsGameP
           nextInstruction = `**Excelente! Conta montada com sucesso.** 👏\n\nVamos começar resolvendo a coluna das **Unidades (U)**: **${u1} - ${u2}**. \n\nQual é o resultado dessa subtração? Escreva na célula de resultado!`;
         }
       } else { // MUL
-        nextInstruction = `**Maravilha! Conta armada perfeitamente.** ⚡\n\nAgora vamos multiplicar o número de baixo por cada algarismo de cima, começando das **Unidades (U)**.\n\nCalcule: **${expectedRow2[3]} × ${expectedRow1[3]}**.\n\nEscreva o resultado na célula correspondente das Unidades! Se o resultado tiver dois dígitos, mande a dezena para o balãozinho 'vai um' acima da coluna das Dezenas (D)!`;
+        if (num2 >= 10) {
+          setGridMulRow1(["", "", "", ""]);
+          setGridMulRow2(["", "", "", "+"]);
+          setMulStep("PARTIAL1");
+          nextInstruction = `**Excelente trabalho! A conta está armada com perfeita simetria.** 🌟\n\nComo o multiplicador de baixo (**${num2}**) possui 2 algarismos, vamos resolver em etapas:\n\n1) Multiplicar as **Unidades** (**${num2 % 10}**) por todos os números de cima.\n2) Multiplicar as **Dezenas** (**${Math.floor(num2 / 10)}**) por todos os de cima (colocando um **+** nas Unidades da segunda linha para pular uma casa).\n3) Somar as duas parcelas no final!\n\nVamos começar! Calcule: **${num2 % 10} × ${expectedRow1[3] || 0}**.`;
+        } else {
+          nextInstruction = `**Maravilha! Conta armada perfeitamente.** ⚡\n\nAgora vamos multiplicar o número de baixo por cada algarismo de cima, começando das **Unidades (U)**.\n\nCalcule: **${num2} × ${expectedRow1[3] || 0}**.\n\nEscreva o resultado na célula correspondente das Unidades! Se o resultado tiver dois dígitos, mande a dezena para o balãozinho 'vai um' acima da coluna das Dezenas (D)!`;
+        }
       }
 
       setTutorMessage(nextInstruction);
@@ -1126,7 +1432,7 @@ export default function MathOperationsGame({ onBackToMenu }: MathOperationsGameP
           if (nextIdx < divSteps.length) {
             setDivStepIndex(nextIdx);
             setTutorMessage(divSteps[nextIdx].message);
-            setCurrentOptions(divSteps[nextIdx].options);
+            setCurrentOptions(shuffleArray(divSteps[nextIdx].options));
             setSelectedOptionId(null);
             setWrongOptions([]);
             
@@ -1164,15 +1470,32 @@ export default function MathOperationsGame({ onBackToMenu }: MathOperationsGameP
         // Trigger borrow action
         handleBorrow(activeColumn - 1);
       } else {
-        // Fill result cell
-        const copyRes = [...gridResult];
-        copyRes[activeColumn] = opt.value.result;
-        setGridResult(copyRes);
+        if (opType === "MUL" && num2 >= 10) {
+          if (mulStep === "PARTIAL1") {
+            const copy = [...gridMulRow1];
+            copy[activeColumn] = opt.value.result;
+            setGridMulRow1(copy);
+          } else if (mulStep === "PARTIAL2") {
+            const copy = [...gridMulRow2];
+            copy[activeColumn] = opt.value.result;
+            setGridMulRow2(copy);
+          } else {
+            const copy = [...gridResult];
+            copy[activeColumn] = opt.value.result;
+            setGridResult(copy);
+          }
+        } else {
+          // Fill result cell
+          const copyRes = [...gridResult];
+          copyRes[activeColumn] = opt.value.result;
+          setGridResult(copyRes);
+        }
 
         // Fill carry-over if available
         if (opt.value.carry !== undefined && activeColumn > 0) {
           const copyCarries = [...gridCarries];
-          copyCarries[activeColumn - 1] = opt.value.carry;
+          const carryVal = parseInt(opt.value.carry) || 0;
+          copyCarries[activeColumn - 1] = carryVal > 0 ? opt.value.carry : "";
           setGridCarries(copyCarries);
         }
       }
@@ -1202,13 +1525,29 @@ export default function MathOperationsGame({ onBackToMenu }: MathOperationsGameP
           );
         } else {
           setTutorMessage(
-            `O valor subtraído para essa coluna não está correto. Faça a conta novamente subtraindo o número de baixo do valor atualizado de cima.\n\nTente outra alternativa!`
+            `O valor subtraído para essa coluna não está correto. Faça a conta novamente subtraindo o número de baixo do valor updated de cima.\n\nTente outra alternativa!`
           );
         }
       } else if (opType === "MUL") {
-        setTutorMessage(
-          `Cuidado! Esse resultado de multiplicação está incorreto. Multiplique o número de baixo pelo dígito de cima e adicione o valor que subiu (se houver).\n\nTente outra alternativa!`
-        );
+        if (num2 >= 10) {
+          if (mulStep === "PARTIAL1") {
+            setTutorMessage(
+              `Ops! O resultado da multiplicação por unidade está incorreto.\n\nMultiplique as unidades de baixo (**${num2 % 10}**) pelo dígito correspondente de cima e adicione o valor que subiu (se houver).\n\nTente outra opção!`
+            );
+          } else if (mulStep === "PARTIAL2") {
+            setTutorMessage(
+              `Hum! O resultado da multiplicação por dezena está incorreto.\n\nMultiplique as dezenas de baixo (**${Math.floor(num2 / 10)}**) pelo dígito de cima (lembre-se do alinhamento) e adicione o 'vai um' se houver.\n\nTente outra opção!`
+            );
+          } else {
+            setTutorMessage(
+              `Cuidado! A soma final das parcelas desta coluna não está correta.\n\nSome o dígito da primeira parcela com o da segunda parcela e some o 'vai um' que subiu (se houver).\n\nTente outra opção!`
+            );
+          }
+        } else {
+          setTutorMessage(
+            `Cuidado! Esse resultado de multiplicação está incorreto. Multiplique o número de baixo pelo dígito de cima e adicione o valor que subiu (se houver).\n\nTente outra alternativa!`
+          );
+        }
       }
     }
   };
@@ -1373,72 +1712,256 @@ export default function MathOperationsGame({ onBackToMenu }: MathOperationsGameP
     } 
     
     else if (opType === "MUL") {
-      // Step by step verification for MULTIPLICATION
-      const colIdx = activeColumn;
-      
-      const digit1 = parseInt(expectedRow1[colIdx] || "0");
-      const multiplier = parseInt(expectedRow2[3] || "0"); // Always 1 digit bottom multiplier for simplicity in visualizer
-      const carryIn = parseInt(gridCarries[colIdx] || "0");
+      if (num2 >= 10) {
+        if (mulStep === "PARTIAL1") {
+          const colIdx = activeColumn;
+          const digit1 = parseInt(expectedRow1[colIdx] || "0");
+          const multiplier = num2 % 10;
+          const carryIn = parseInt(gridCarries[colIdx] || "0");
 
-      const product = (digit1 * multiplier) + carryIn;
-      const expectedDigitResult = product % 10;
-      const expectedCarryOut = Math.floor(product / 10);
+          const product = (digit1 * multiplier) + carryIn;
+          const expectedDigitResult = product % 10;
+          const expectedCarryOut = Math.floor(product / 10);
 
-      const studentResult = parseInt(gridResult[colIdx] || "");
-      const studentCarryOut = parseInt(gridCarries[colIdx - 1] || "0");
+          const studentResult = parseInt(gridMulRow1[colIdx] || "");
+          const studentCarryOut = parseInt(gridCarries[colIdx - 1] || "0");
 
-      const isResultCorrect = studentResult === expectedDigitResult;
-      const isCarryCorrect = colIdx === 0 ? true : studentCarryOut === expectedCarryOut;
+          const isResultCorrect = studentResult === expectedDigitResult;
+          const isCarryCorrect = colIdx === 0 ? true : studentCarryOut === expectedCarryOut;
 
-      if (!isResultCorrect || !isCarryCorrect) {
-        const newResErrors = [...(solvingErrors.result || [false, false, false, false])];
-        const newCarryErrors = [...(solvingErrors.carries || [false, false, false, false])];
-        newResErrors[colIdx] = !isResultCorrect;
-        if (colIdx > 0) newCarryErrors[colIdx - 1] = !isCarryCorrect;
+          if (!isResultCorrect || !isCarryCorrect) {
+            const newResErrors = [...(solvingErrors.result || [false, false, false, false])];
+            const newCarryErrors = [...(solvingErrors.carries || [false, false, false, false])];
+            newResErrors[colIdx] = !isResultCorrect;
+            if (colIdx > 0) newCarryErrors[colIdx - 1] = !isCarryCorrect;
 
-        setSolvingErrors({
-          result: newResErrors,
-          carries: newCarryErrors
-        });
+            setSolvingErrors({
+              result: newResErrors,
+              carries: newCarryErrors
+            });
 
-        if (!isResultCorrect) {
-          setTutorMessage(
-            `O cálculo da multiplicação não está correto. Calcule novamente: **${multiplier} × ${digit1}${carryIn > 0 ? ` + ${carryIn} (que subiu)` : ""}**.`
-          );
-        } else {
-          setTutorMessage(
-            `O algarismo do resultado está certo (${studentResult}), mas você esqueceu de colocar o transporte correspondente de **${expectedCarryOut}** na coluna da esquerda! Preencha o balãozinho acima da coluna da esquerda.`
-          );
+            if (!isResultCorrect) {
+              setTutorMessage(
+                `O cálculo da primeira parcela (unidades) não está correto. Calcule novamente: **${multiplier} × ${digit1}${carryIn > 0 ? ` + ${carryIn} (que subiu)` : ""}**.`
+              );
+            } else {
+              setTutorMessage(
+                `O algarismo do resultado está certo (${studentResult}), mas você esqueceu de colocar o transporte correspondente de **${expectedCarryOut}** na coluna da esquerda! Preencha o balãozinho acima da coluna da esquerda.`
+              );
+            }
+          } else {
+            setSolvingErrors({});
+            const nextCol = colIdx - 1;
+            const nextD1 = expectedRow1[nextCol];
+
+            if (nextCol < 0 || (!nextD1 && expectedCarryOut === 0)) {
+              setMulStep("PARTIAL2");
+              setActiveColumn(2); // Tens column of gridMulRow2
+              setGridCarries(["", "", "", ""]); // clear carries for tens multiplication
+              setTutorMessage(
+                `**Excelente! Primeira parcela (multiplicação por ${multiplier}) concluída com sucesso.** 👏\n\nAgora vamos multiplicar o algarismo das **Dezenas** de baixo (**${Math.floor(num2 / 10)}**) por todos os algarismos de cima.\n\nLembra que pulamos a coluna das Unidades? Já colocamos um sinal **+** nela de forma automática!\n\nComece multiplicando pelas **Unidades**: **${Math.floor(num2 / 10)} × ${expectedRow1[3] || 0}**. Escreva o resultado na coluna das Dezenas (D)!`
+              );
+            } else if (!nextD1 && expectedCarryOut > 0) {
+              setActiveColumn(nextCol);
+              setTutorMessage(
+                `**Excelente!** Agora temos o número **${expectedCarryOut}** que subiu na última coluna de multiplicação.\n\nComo não há mais números para multiplicar à esquerda, basta descer o **${expectedCarryOut}** diretamente para a primeira parcela da coluna das **${nextCol === 2 ? "Dezenas" : nextCol === 1 ? "Centenas" : "Milhar"}**!`
+              );
+            } else {
+              setActiveColumn(nextCol);
+              setTutorMessage(
+                `**Sensacional! Multiplicação exata.** 👏\n\nAgora multiplicamos o próximo algarismo à esquerda nas **${nextCol === 2 ? "Dezenas" : "Centenas"}**:\n\nCalcule: **${multiplier} × ${nextD1}**${expectedCarryOut > 0 ? ` e adicione o **${expectedCarryOut}** que subiu` : ""}.\n\nQual é o resultado?`
+              );
+            }
+          }
+        } else if (mulStep === "PARTIAL2") {
+          const colIdx = activeColumn;
+          const multiplier = Math.floor(num2 / 10);
+          const topDigitCol = colIdx + 1;
+          const digit1 = parseInt(expectedRow1[topDigitCol] || "0");
+          const carryIn = parseInt(gridCarries[colIdx] || "0");
+
+          const product = (digit1 * multiplier) + carryIn;
+          const expectedDigitResult = product % 10;
+          const expectedCarryOut = Math.floor(product / 10);
+
+          const studentResult = parseInt(gridMulRow2[colIdx] || "");
+          const studentCarryOut = parseInt(gridCarries[colIdx - 1] || "0");
+
+          const isResultCorrect = studentResult === expectedDigitResult;
+          const isCarryCorrect = colIdx === 0 ? true : studentCarryOut === expectedCarryOut;
+
+          if (!isResultCorrect || !isCarryCorrect) {
+            const newResErrors = [...(solvingErrors.result || [false, false, false, false])];
+            const newCarryErrors = [...(solvingErrors.carries || [false, false, false, false])];
+            newResErrors[colIdx] = !isResultCorrect;
+            if (colIdx > 0) newCarryErrors[colIdx - 1] = !isCarryCorrect;
+
+            setSolvingErrors({
+              result: newResErrors,
+              carries: newCarryErrors
+            });
+
+            if (!isResultCorrect) {
+              setTutorMessage(
+                `O cálculo da segunda parcela (dezenas) não está correto. Calcule novamente: **${multiplier} × ${digit1}${carryIn > 0 ? ` + ${carryIn} (que subiu)` : ""}**.`
+              );
+            } else {
+              setTutorMessage(
+                `O algarismo da segunda parcela está correto (${studentResult}), mas você esqueceu de colocar o transporte correspondente de **${expectedCarryOut}** no balãozinho! Preencha-o na coluna da esquerda.`
+              );
+            }
+          } else {
+            setSolvingErrors({});
+            const nextCol = colIdx - 1;
+            const nextTopD1 = expectedRow1[nextCol + 1];
+
+            if (nextCol < 0 || (!nextTopD1 && expectedCarryOut === 0)) {
+              setMulStep("ADDITION");
+              setActiveColumn(3); // Start adding from rightmost Units column
+              setGridCarries(["", "", "", ""]); // clear carries for addition
+              setTutorMessage(
+                `**Maravilhoso! As duas parcelas da multiplicação foram geradas perfeitamente!** ⚡\n\nAgora temos:\n1ª Parcela (Unidades): **${parseInt(gridMulRow1.join(""))}**\n2ª Parcela (Dezenas): **${parseInt(gridMulRow2.join("").replace("+", "0"))}**\n\nVamos somar as duas parcelas coluna por coluna, começando das **Unidades (U)**: **${gridMulRow1[3] || 0} + ${gridMulRow2[3] || 0}**.`
+              );
+            } else if (!nextTopD1 && expectedCarryOut > 0) {
+              setActiveColumn(nextCol);
+              setTutorMessage(
+                `**Excelente!** Agora temos o número **${expectedCarryOut}** que subiu na última coluna de multiplicação.\n\nComo não há mais números para multiplicar à esquerda, basta descer o **${expectedCarryOut}** diretamente para a segunda parcela da coluna das **${nextCol === 1 ? "Centenas" : "Milhares"}**!`
+              );
+            } else {
+              setActiveColumn(nextCol);
+              setTutorMessage(
+                `**Muito bem!** Agora multiplicamos o próximo dígito à esquerda:\n\nCalcule: **${multiplier} × ${expectedRow1[nextCol + 1]}**${expectedCarryOut > 0 ? ` e adicione o **${expectedCarryOut}** que subiu` : ""}.\n\nQual é o resultado?`
+              );
+            }
+          }
+        } else if (mulStep === "ADDITION") {
+          const colIdx = activeColumn;
+          const digit1 = parseInt(gridMulRow1[colIdx] || "0");
+          const val2Raw = gridMulRow2[colIdx] || "0";
+          const digit2 = val2Raw === "+" ? 0 : parseInt(val2Raw || "0");
+          const carryIn = parseInt(gridCarries[colIdx] || "0");
+
+          const colSum = digit1 + digit2 + carryIn;
+          const expectedDigitResult = colSum % 10;
+          const expectedCarryOut = Math.floor(colSum / 10);
+
+          const studentResult = parseInt(gridResult[colIdx] || "");
+          const studentCarryOut = parseInt(gridCarries[colIdx - 1] || "0");
+
+          const isResultCorrect = studentResult === expectedDigitResult;
+          const isCarryCorrect = colIdx === 0 ? true : studentCarryOut === expectedCarryOut;
+
+          if (!isResultCorrect || !isCarryCorrect) {
+            const newResErrors = [...(solvingErrors.result || [false, false, false, false])];
+            const newCarryErrors = [...(solvingErrors.carries || [false, false, false, false])];
+            newResErrors[colIdx] = !isResultCorrect;
+            if (colIdx > 0) newCarryErrors[colIdx - 1] = !isCarryCorrect;
+
+            setSolvingErrors({
+              result: newResErrors,
+              carries: newCarryErrors
+            });
+
+            if (!isResultCorrect) {
+              setTutorMessage(
+                `A soma desta coluna está incorreta. Some com cuidado: **${digit1} + ${digit2}${carryIn > 0 ? ` + ${carryIn} (que subiu)` : ""}**.`
+              );
+            } else {
+              setTutorMessage(
+                `O valor da soma está correto (${studentResult}), mas você esqueceu de colocar o transporte correspondente de **${expectedCarryOut}** no balãozinho 'vai um' da coluna à esquerda!`
+              );
+            }
+          } else {
+            setSolvingErrors({});
+            const nextCol = colIdx - 1;
+            const nextD1Val = gridMulRow1[nextCol];
+            const nextD2Val = gridMulRow2[nextCol];
+
+            if (nextCol < 0 || (!nextD1Val && !nextD2Val && expectedCarryOut === 0)) {
+              setGameStage("COMPLETED");
+              setTutorMessage(
+                `🏆 **PARABÉNS! VOCÊ DOMINOU A MULTIPLICAÇÃO COM DOIS MULTIPLICADORES!** 🏆\n\nO resultado de **${num1} × ${num2}** é **${num1 * num2}**.\n\nVocê realizou as multiplicações parciais, pulou a casa decimal corretamente e somou tudo com precisão brilhante!`
+              );
+            } else if (!nextD1Val && !nextD2Val && expectedCarryOut > 0) {
+              setActiveColumn(nextCol);
+              setTutorMessage(
+                `**Perfeito!** Agora coloque o **${expectedCarryOut}** que sobrou da soma diretamente na célula da coluna da esquerda!`
+              );
+            } else {
+              setActiveColumn(nextCol);
+              const nextDigit2 = nextD2Val === "+" ? 0 : parseInt(nextD2Val || "0");
+              setTutorMessage(
+                `**Excelente!** Agora vamos somar a coluna das **${nextCol === 2 ? "Dezenas (D)" : nextCol === 1 ? "Centenas (C)" : "Milhares (M)"}**:\n\nSome: **${nextD1Val || 0} + ${nextDigit2}**${expectedCarryOut > 0 ? ` e adicione o **${expectedCarryOut}** que veio da coluna anterior` : ""}.`
+              );
+            }
+          }
         }
       } else {
-        setSolvingErrors({});
+        const colIdx = activeColumn;
         
-        if (colIdx > 0) {
-          const nextCol = colIdx - 1;
-          const nextD1 = expectedRow1[nextCol];
+        const digit1 = parseInt(expectedRow1[colIdx] || "0");
+        const multiplier = num2;
+        const carryIn = parseInt(gridCarries[colIdx] || "0");
 
-          if (!nextD1 && expectedCarryOut === 0) {
-            setGameStage("COMPLETED");
+        const product = (digit1 * multiplier) + carryIn;
+        const expectedDigitResult = product % 10;
+        const expectedCarryOut = Math.floor(product / 10);
+
+        const studentResult = parseInt(gridResult[colIdx] || "");
+        const studentCarryOut = parseInt(gridCarries[colIdx - 1] || "0");
+
+        const isResultCorrect = studentResult === expectedDigitResult;
+        const isCarryCorrect = colIdx === 0 ? true : studentCarryOut === expectedCarryOut;
+
+        if (!isResultCorrect || !isCarryCorrect) {
+          const newResErrors = [...(solvingErrors.result || [false, false, false, false])];
+          const newCarryErrors = [...(solvingErrors.carries || [false, false, false, false])];
+          newResErrors[colIdx] = !isResultCorrect;
+          if (colIdx > 0) newCarryErrors[colIdx - 1] = !isCarryCorrect;
+
+          setSolvingErrors({
+            result: newResErrors,
+            carries: newCarryErrors
+          });
+
+          if (!isResultCorrect) {
             setTutorMessage(
-              `🏆 **PARABÉNS! VOCÊ DOMINOU A MULTIPLICAÇÃO COM TRANSPORTE!** 🏆\n\nO resultado de **${num1} × ${num2}** é **${num1 * num2}**.\n\nArmar e realizar a conta passo a passo ajuda a consolidar o raciocínio matemático. Você fez um trabalho magnífico!`
-            );
-          } else if (!nextD1 && expectedCarryOut > 0) {
-            // Just need to write down the final carry-over
-            setActiveColumn(nextCol);
-            setTutorMessage(
-              `**Excelente!** Agora temos o número **${expectedCarryOut}** que subiu na última coluna.\n\nComo não há mais números para multiplicar à esquerda, basta descer o **${expectedCarryOut}** diretamente para a célula de resultado da coluna das **${nextCol === 2 ? "Dezenas" : nextCol === 1 ? "Centenas" : "Milhar"}**!`
+              `O cálculo da multiplicação não está correto. Calcule novamente: **${multiplier} × ${digit1}${carryIn > 0 ? ` + ${carryIn} (que subiu)` : ""}**.`
             );
           } else {
-            setActiveColumn(nextCol);
             setTutorMessage(
-              `**Sensacional! Multiplicação exata.** 👏\n\nAgora multiplicamos o próximo algarismo à esquerda nas **${nextCol === 2 ? "Dezenas" : "Centenas"}**:\n\nCalcule: **${multiplier} × ${nextD1}**${expectedCarryOut > 0 ? ` e adicione o **${expectedCarryOut}** que subiu` : ""}.\n\nQual é o resultado?`
+              `O algarismo do resultado está certo (${studentResult}), mas você esqueceu de colocar o transporte correspondente de **${expectedCarryOut}** na coluna da esquerda! Preencha o balãozinho acima da coluna da esquerda.`
             );
           }
         } else {
-          setGameStage("COMPLETED");
-          setTutorMessage(
-            `🏆 **PARABÉNS! VOCÊ DOMINOU A MULTIPLICAÇÃO COM TRANSPORTE!** 🏆\n\nO resultado de **${num1} × ${num2}** é **${num1 * num2}**.\n\nVocê é um mestre da matemática!`
-          );
+          setSolvingErrors({});
+          
+          if (colIdx > 0) {
+            const nextCol = colIdx - 1;
+            const nextD1 = expectedRow1[nextCol];
+
+            if (!nextD1 && expectedCarryOut === 0) {
+              setGameStage("COMPLETED");
+              setTutorMessage(
+                `🏆 **PARABÉNS! VOCÊ DOMINOU A MULTIPLICAÇÃO COM TRANSPORTE!** 🏆\n\nO resultado de **${num1} × ${num2}** é **${num1 * num2}**.\n\nArmar e realizar a conta passo a passo ajuda a consolidar o raciocínio matemático. Você fez um trabalho magnífico!`
+              );
+            } else if (!nextD1 && expectedCarryOut > 0) {
+              setActiveColumn(nextCol);
+              setTutorMessage(
+                `**Excelente!** Agora temos o número **${expectedCarryOut}** que subiu na última coluna.\n\nComo não há mais números para multiplicar à esquerda, basta descer o **${expectedCarryOut}** diretamente para a célula de resultado da coluna das **${nextCol === 2 ? "Dezenas" : nextCol === 1 ? "Centenas" : "Milhar"}**!`
+              );
+            } else {
+              setActiveColumn(nextCol);
+              setTutorMessage(
+                `**Sensacional! Multiplicação exata.** 👏\n\nAgora multiplicamos o próximo algarismo à esquerda nas **${nextCol === 2 ? "Dezenas" : "Centenas"}**:\n\nCalcule: **${multiplier} × ${nextD1}**${expectedCarryOut > 0 ? ` e adicione o **${expectedCarryOut}** que subiu` : ""}.\n\nQual é o resultado?`
+              );
+            }
+          } else {
+            setGameStage("COMPLETED");
+            setTutorMessage(
+              `🏆 **PARABÉNS! VOCÊ DOMINOU A MULTIPLICAÇÃO COM TRANSPORTE!** 🏆\n\nO resultado de **${num1} × ${num2}** é **${num1 * num2}**.\n\nVocê é um mestre da matemática!`
+            );
+          }
         }
       }
     }
@@ -1627,16 +2150,20 @@ export default function MathOperationsGame({ onBackToMenu }: MathOperationsGameP
 
                     <div className="space-y-1.5 p-4 bg-slate-50 rounded-2xl border border-slate-100">
                       <span className="text-xs font-mono text-indigo-700 font-bold block">
-                        {(customType === "MUL" || customType === "DIV") ? "Segundo Número (De 2 a 9)" : "Segundo Número (De 10 a 999)"}
+                        {customType === "DIV" 
+                          ? "Segundo Número / Divisor (De 2 a 99)" 
+                          : customType === "MUL" 
+                            ? "Segundo Número / Multiplicador (De 2 a 99)" 
+                            : "Segundo Número (De 10 a 999)"}
                       </span>
                       <input
                         type="number"
-                        min={(customType === "MUL" || customType === "DIV") ? 2 : 10}
-                        max={(customType === "MUL" || customType === "DIV") ? 9 : 999}
+                        min={customType === "DIV" || customType === "MUL" ? 2 : 10}
+                        max={customType === "DIV" || customType === "MUL" ? 99 : 999}
                         value={customNum2}
                         onChange={(e) => {
-                          const minVal = (customType === "MUL" || customType === "DIV") ? 2 : 10;
-                          const maxVal = (customType === "MUL" || customType === "DIV") ? 9 : 999;
+                          const minVal = customType === "DIV" || customType === "MUL" ? 2 : 10;
+                          const maxVal = customType === "DIV" || customType === "MUL" ? 99 : 999;
                           setCustomNum2(Math.max(minVal, Math.min(maxVal, parseInt(e.target.value) || minVal)));
                         }}
                         className="w-full text-center text-xl font-bold bg-white border border-slate-200 rounded-xl py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
@@ -1993,8 +2520,41 @@ export default function MathOperationsGame({ onBackToMenu }: MathOperationsGameP
 
                   {/* Math Grid Workspace */}
                   {opType === "DIV" ? (
-                    <div className="flex flex-col items-center justify-center pt-2 pb-4">
-                      <div className="relative grid grid-cols-6 gap-y-3 gap-x-2 items-center max-w-sm w-full font-mono">
+                    <div className="flex flex-col items-center justify-center pt-2 pb-4 space-y-6 w-full">
+                      
+                      {/* DIVISOR INFO CARD (Point 1) */}
+                      <div className="w-full max-w-md bg-indigo-50/80 border border-indigo-100 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-indigo-950 font-sans shadow-sm">
+                        <div className="flex items-center gap-3">
+                          <span className="flex items-center justify-center w-8 h-8 rounded-full bg-indigo-600 text-white font-mono font-bold text-sm">
+                            d
+                          </span>
+                          <div>
+                            <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider block">Identificação do Divisor</span>
+                            <span className="text-sm font-bold">O divisor é <strong className="text-indigo-600 text-base font-mono bg-white px-2 py-0.5 rounded-lg border border-indigo-100 shadow-sm">{num2}</strong></span>
+                          </div>
+                        </div>
+                        <div className="px-3 py-1.5 bg-indigo-100/60 border border-indigo-200/50 rounded-xl text-xs font-semibold text-indigo-800">
+                          {num2.toString().length === 1 ? "1 algarismo" : `${num2.toString().length} algarismos`}
+                        </div>
+                      </div>
+
+                      {/* ALIGNED DIVIDEND BOXES (Point 2) */}
+                      <div className="w-full max-w-md bg-white border border-slate-100 rounded-2xl p-4 flex flex-col items-center gap-2 font-sans shadow-sm">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Dividendo por Algarismo</span>
+                        <div className="flex items-center gap-2">
+                          {num1.toString().split("").map((digit, idx) => (
+                            <div key={`aligned-dividend-digit-${idx}`} className="flex flex-col items-center gap-1">
+                              <div className="w-10 h-10 rounded-xl border-2 border-indigo-100 bg-indigo-50/20 text-indigo-950 font-mono font-extrabold text-lg flex items-center justify-center shadow-sm">
+                                {digit}
+                              </div>
+                              <span className="text-[9px] text-indigo-500/80 font-bold font-mono">Dígito {idx + 1}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* MAIN DIVISION BRACKET GRID */}
+                      <div className="relative grid grid-cols-6 gap-y-3 gap-x-2 items-center max-w-sm w-full font-mono bg-white/40 border border-indigo-50/30 p-4 rounded-3xl shadow-inner">
                         
                         {/* Grouping Arc */}
                         {(() => {
@@ -2056,6 +2616,200 @@ export default function MathOperationsGame({ onBackToMenu }: MathOperationsGameP
                         })}
 
                       </div>
+
+                      {/* STAGES SPECIFIC CARDS (Point 6) */}
+                      <div className="w-full max-w-md bg-slate-50/50 border border-slate-100 rounded-3xl p-4 flex flex-col font-sans text-left shadow-inner">
+                        <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5 px-1 mb-3">
+                          <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                          Passos de Resolução Detalhados
+                        </h4>
+
+                        <div className="max-h-[300px] overflow-y-auto space-y-3.5 pr-1.5 scrollbar-thin scrollbar-thumb-indigo-100 scrollbar-track-transparent">
+                          {(() => {
+                            const model = getDivisionBoardModel();
+                            if (!model || model.stages.length === 0) {
+                              return <p className="text-xs text-slate-400 italic px-1">Nenhum passo iniciado.</p>;
+                            }
+
+                            const digits = num1.toString().split("");
+
+                            return model.stages.map((stage, idx) => {
+                              if (!stage.showTop) return null;
+
+                              const topValNum = parseInt(stage.topValue);
+                              const partialQuotient = Math.floor(topValNum / num2);
+                              const subtractedValue = partialQuotient * num2;
+                              const remainderValue = topValNum - subtractedValue;
+
+                              const stageDivideStepIdx = idx === 0 
+                                ? (model.isFirstGrouped ? 1 : 0)
+                                : (model.isFirstGrouped ? 1 : 0) + idx * 3;
+                              
+                              const isQuotientRevealed = gameStage === "COMPLETED" || divStepIndex > stageDivideStepIdx;
+                              const isCurrentActiveStage = divStepIndex >= stageDivideStepIdx && divStepIndex < stageDivideStepIdx + 3;
+
+                              const broughtDownDigit = digits[model.groupSize + idx - 1];
+
+                              return (
+                                <div 
+                                  key={`stage-card-${idx}`} 
+                                  className={`border rounded-2xl p-3.5 transition-all shadow-sm ${
+                                    isCurrentActiveStage 
+                                      ? "bg-amber-50/75 border-amber-300 ring-1 ring-amber-200" 
+                                      : "bg-white border-slate-100/80"
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between border-b border-slate-100/80 pb-2 mb-3">
+                                    <span className="text-xs font-extrabold text-slate-700">
+                                      Etapa {idx + 1}: Dividindo o bloco
+                                    </span>
+                                    <span className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded-full ${
+                                      isCurrentActiveStage 
+                                        ? "bg-amber-100 text-amber-800 animate-pulse" 
+                                        : isQuotientRevealed 
+                                          ? "bg-emerald-100 text-emerald-800" 
+                                          : "bg-slate-100 text-slate-400"
+                                    }`}>
+                                      {isCurrentActiveStage ? "Em Andamento" : isQuotientRevealed ? "Resolvido" : "Pendente"}
+                                    </span>
+                                  </div>
+
+                                  <div className="space-y-3.5 text-xs text-slate-600">
+                                    
+                                    {/* BLOCK FORMATION (Point 3: Unindo resto e dígito descido) */}
+                                    {idx === 0 ? (
+                                      /* First block is just the initial dividend group */
+                                      <div className="flex items-center justify-between bg-indigo-50/40 p-2.5 rounded-xl border border-indigo-100/30">
+                                        <div>
+                                          <span className="text-[10px] text-indigo-500 font-bold block uppercase tracking-wider">Dividendo Inicial</span>
+                                          <span className="text-xs text-slate-500">Agrupamos o começo do número:</span>
+                                        </div>
+                                        <div className="px-3 py-1 rounded-lg bg-indigo-600 text-white font-mono font-extrabold text-sm shadow-sm">
+                                          {stage.topValue}
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      /* Subsequent blocks show the beautiful unification formula */
+                                      <div className="bg-slate-50/80 border border-slate-100 p-2.5 rounded-xl space-y-2">
+                                        <span className="text-[9px] text-slate-400 font-bold block uppercase tracking-wider">
+                                          Formação do Novo Dividendo
+                                        </span>
+                                        <div className="flex items-center justify-center gap-1.5 font-sans py-0.5">
+                                          {/* Resto anterior */}
+                                          <div className="flex flex-col items-center">
+                                            <div className="px-2 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 font-mono font-extrabold text-xs shadow-sm">
+                                              {model.stages[idx - 1]?.remainder}
+                                            </div>
+                                            <span className="text-[8px] text-emerald-600 font-bold mt-0.5 leading-none">Resto</span>
+                                          </div>
+
+                                          <span className="text-slate-400 font-bold text-xs">＋</span>
+
+                                          {/* Dígito que desceu */}
+                                          <div className="flex flex-col items-center">
+                                            <div className="px-2 py-1 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 font-mono font-extrabold text-xs shadow-sm">
+                                              {broughtDownDigit || "?"}
+                                            </div>
+                                            <span className="text-[8px] text-amber-600 font-bold mt-0.5 leading-none">Desceu</span>
+                                          </div>
+
+                                          <span className="text-slate-400 font-bold text-xs">➔</span>
+
+                                          {/* Novo bloco formado */}
+                                          <div className="flex flex-col items-center">
+                                            <div className="px-3 py-1 rounded-lg bg-indigo-600 text-white font-mono font-extrabold text-xs shadow-sm">
+                                              {stage.topValue}
+                                            </div>
+                                            <span className="text-[8px] text-indigo-600 font-bold mt-0.5 leading-none">Unido</span>
+                                          </div>
+                                        </div>
+                                        <p className="text-[10px] text-slate-500 text-center leading-snug">
+                                          O resto <strong className="text-emerald-700 font-extrabold">{model.stages[idx - 1]?.remainder}</strong> juntou-se ao dígito baixado <strong className="text-amber-700 font-extrabold">{broughtDownDigit}</strong>, formando <strong className="text-indigo-600 font-extrabold">{stage.topValue}</strong>!
+                                        </p>
+                                      </div>
+                                    )}
+
+                                    {/* Point 4: Quociente Parcial */}
+                                    <div className="flex items-center justify-between bg-emerald-50/20 p-2.5 rounded-xl border border-emerald-100/30">
+                                      <div>
+                                        <span className="text-[10px] text-emerald-700 font-bold block uppercase tracking-wider">Quociente Parcial</span>
+                                        <span className="text-[11px] text-slate-500 block leading-tight">Quantas vezes o {num2} cabe em {stage.topValue}?</span>
+                                      </div>
+                                      <div className="flex items-center justify-center min-w-10 h-9 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 font-mono font-extrabold text-sm shadow-sm">
+                                        {isQuotientRevealed ? partialQuotient : "?"}
+                                      </div>
+                                    </div>
+
+                                    {/* Point 5: Resto e Descer Próximo Dígito */}
+                                    {stage.showSub && (
+                                      <div className="bg-red-50/20 border border-red-100/30 p-2.5 rounded-xl space-y-2">
+                                        <div className="flex items-center justify-between">
+                                          <div>
+                                            <span className="text-[10px] text-red-700 font-bold block uppercase tracking-wider">Subtração do Resto</span>
+                                            <span className="text-[11px] text-slate-500 font-mono">{stage.topValue} − {isQuotientRevealed ? subtractedValue : `(${partialQuotient} × ${num2})`}</span>
+                                          </div>
+                                          <div className="flex items-center justify-center min-w-10 h-9 rounded-lg bg-red-50 border border-red-100 text-red-700 font-mono font-extrabold text-sm shadow-sm">
+                                            {stage.showRemainder ? stage.remainder : "?"}
+                                          </div>
+                                        </div>
+
+                                        {stage.showBringDown && stage.bringDownDigit && (
+                                          <div className="flex items-center justify-between border-t border-dashed border-slate-100 pt-2 mt-1 text-[11px] text-amber-800 font-medium">
+                                            <span className="flex items-center gap-1">
+                                              <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping"></span>
+                                              Próximo passo: descer o dígito:
+                                            </span>
+                                            <strong className="font-mono bg-amber-50 px-2 py-0.5 rounded border border-amber-200 text-amber-700 font-extrabold text-xs">
+                                              {stage.bringDownDigit}
+                                            </strong>
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            });
+                          })()}
+                        </div>
+                      </div>
+
+                      {/* Point 7: FINAL RESULT CARD */}
+                      {(gameStage === "COMPLETED" || divStepIndex >= divSteps.length) && (
+                        <div className="w-full max-w-md bg-gradient-to-br from-emerald-50 to-teal-50/50 border-2 border-emerald-200 rounded-3xl p-5 shadow-lg shadow-emerald-100/20 font-sans space-y-4 animate-scale-up text-left">
+                          <div className="text-center border-b border-emerald-100/80 pb-3">
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase tracking-wider">
+                              🎉 Divisão Concluída!
+                            </span>
+                            <h4 className="text-sm font-bold text-emerald-950 mt-2">
+                              Parabéns! Você resolveu com maestria!
+                            </h4>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-3">
+                            {/* Quotient Box */}
+                            <div className="bg-white border border-emerald-100 rounded-2xl p-3 text-center shadow-sm">
+                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Quociente Completo</span>
+                              <div className="mt-1 flex items-center justify-center mx-auto w-14 h-12 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 font-mono font-extrabold text-lg shadow-sm">
+                                {Math.floor(num1 / num2)}
+                              </div>
+                            </div>
+
+                            {/* Remainder Box */}
+                            <div className="bg-white border border-emerald-100 rounded-2xl p-3 text-center shadow-sm">
+                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Resto Final</span>
+                              <div className="mt-1 flex items-center justify-center mx-auto w-14 h-12 rounded-xl bg-orange-50 border border-orange-200 text-orange-700 font-mono font-extrabold text-lg shadow-sm">
+                                {num1 % num2}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="bg-white/80 border border-emerald-100/50 rounded-xl p-2.5 text-center text-xs text-emerald-900 font-medium">
+                            Resultado: <span className="font-mono font-extrabold text-sm">{num1} ÷ {num2} = {Math.floor(num1 / num2)}</span> {num1 % num2 > 0 ? `com resto ${num1 % num2}` : "(exata)"}
+                          </div>
+                        </div>
+                      )}
+
                     </div>
                   ) : (
                     <div className="flex flex-col items-center justify-center pt-2 pb-4">
@@ -2198,71 +2952,195 @@ export default function MathOperationsGame({ onBackToMenu }: MathOperationsGameP
                           );
                         })}
 
-                        {/* Thick Divider line */}
-                        <div className="col-span-6 border-t-4 border-slate-700/85 my-2"></div>
-
-                        {/* ROW 3: Result row */}
-                        {opType === "SUB" && gameStage === "SOLVING" && (
+                        {/* Intermediate rows for 2-digit multiplication, or regular layout */}
+                        {opType === "MUL" && num2 >= 10 ? (
                           <>
-                            <div className="col-span-2 text-right text-[10px] font-bold text-red-600 pr-2">Emprestar:</div>
+                            {/* Thick Divider line */}
+                            <div className="col-span-6 border-t-4 border-slate-700/85 my-2"></div>
+
+                            {/* ROW 3: 1st Partial Product (multiplied by units) */}
+                            <div className="col-span-2 text-right text-xs font-bold text-indigo-900 pr-2">
+                              {gameStage === "SOLVING" && mulStep === "PARTIAL1" ? "👉 Parcela Unid.:" : "Parcela Unid.:"}
+                            </div>
                             {[0, 1, 2, 3].map((idx) => {
-                              const canBorrowFrom = idx < 3 && gridRow1[idx] && gridRow1[idx] !== "0" && !borrowedFrom[idx];
-                              
+                              const cellVal = gridMulRow1[idx];
+                              const isActive = gameStage === "SOLVING" && mulStep === "PARTIAL1" && activeColumn === idx;
+                              const isError = solvingErrors.result?.[idx];
+
                               return (
-                                <div key={`borrow-btn-${idx}`} className="flex justify-center">
-                                  {canBorrowFrom ? (
-                                    <button
-                                      onClick={() => handleBorrow(idx)}
-                                      title={`Pegar emprestado da coluna das ${idx === 2 ? "Dezenas" : idx === 1 ? "Centenas" : "Milhares"}`}
-                                      className="w-7 h-7 bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700 rounded-lg border border-red-200 shadow-sm flex items-center justify-center transition-all cursor-pointer"
-                                    >
-                                      ✂️
-                                    </button>
-                                  ) : (
-                                    <div className="w-7 h-7"></div>
-                                  )}
+                                <div key={`mul-p1-row-${idx}`} className="flex justify-center">
+                                  <input
+                                    type="text"
+                                    maxLength={1}
+                                    disabled={gameStage !== "SOLVING" || mulStep !== "PARTIAL1"}
+                                    value={cellVal}
+                                    onChange={(e) => {
+                                      const copy = [...gridMulRow1];
+                                      copy[idx] = e.target.value.replace(/[^0-9]/g, "");
+                                      setGridMulRow1(copy);
+                                    }}
+                                    className={`w-10 h-10 text-center text-lg font-bold border rounded-xl shadow-md transition-all font-mono ${
+                                      isActive 
+                                        ? "bg-amber-50 border-amber-500 text-amber-950 ring-2 ring-amber-300 animate-pulse font-extrabold" 
+                                        : isError 
+                                          ? "border-red-500 bg-red-50 text-red-700" 
+                                          : cellVal 
+                                            ? "bg-indigo-50 border-indigo-200 text-indigo-950" 
+                                            : "bg-white border-indigo-50 text-indigo-950"
+                                    }`}
+                                    placeholder={isActive ? "?" : ""}
+                                  />
                                 </div>
                               );
                             })}
-                            <div className="col-span-6 h-1 bg-transparent"></div>
+
+                            {/* ROW 4: 2nd Partial Product (multiplied by tens, shifted) */}
+                            <div className="col-span-2 text-right text-xs font-bold text-indigo-900 pr-2">
+                              {gameStage === "SOLVING" && mulStep === "PARTIAL2" ? "👉 Parcela Dez.:" : "Parcela Dez.:"}
+                            </div>
+                            {[0, 1, 2, 3].map((idx) => {
+                              const cellVal = gridMulRow2[idx];
+                              const isActive = gameStage === "SOLVING" && mulStep === "PARTIAL2" && activeColumn === idx;
+                              const isError = solvingErrors.result?.[idx];
+                              const isShiftCell = idx === 3;
+
+                              return (
+                                <div key={`mul-p2-row-${idx}`} className="flex justify-center">
+                                  <input
+                                    type="text"
+                                    maxLength={1}
+                                    disabled={gameStage !== "SOLVING" || mulStep !== "PARTIAL2" || isShiftCell}
+                                    value={cellVal}
+                                    onChange={(e) => {
+                                      const copy = [...gridMulRow2];
+                                      copy[idx] = e.target.value.replace(/[^0-9]/g, "");
+                                      setGridMulRow2(copy);
+                                    }}
+                                    className={`w-10 h-10 text-center text-lg font-bold border rounded-xl shadow-md transition-all font-mono ${
+                                      isShiftCell
+                                        ? "bg-indigo-100/70 border-indigo-300 text-indigo-800 font-extrabold cursor-not-allowed"
+                                        : isActive 
+                                          ? "bg-amber-50 border-amber-500 text-amber-950 ring-2 ring-amber-300 animate-pulse font-extrabold" 
+                                          : isError 
+                                            ? "border-red-500 bg-red-50 text-red-700" 
+                                            : cellVal 
+                                              ? "bg-indigo-50 border-indigo-200 text-indigo-950" 
+                                              : "bg-white border-indigo-50 text-indigo-950"
+                                    }`}
+                                    placeholder={isActive ? "?" : ""}
+                                  />
+                                </div>
+                              );
+                            })}
+
+                            {/* Extra Divider line for additions */}
+                            <div className="col-span-6 border-t-4 border-slate-700/85 my-2"></div>
+
+                            {/* ROW 5: Final sum of partial products */}
+                            <div className="col-span-2 text-right text-xs font-bold text-emerald-800 pr-2">
+                              {gameStage === "SOLVING" && mulStep === "ADDITION" ? "👉 Soma Final:" : "Soma Final:"}
+                            </div>
+                            {[0, 1, 2, 3].map((idx) => {
+                              const cellVal = gridResult[idx];
+                              const isActive = gameStage === "SOLVING" && mulStep === "ADDITION" && activeColumn === idx;
+                              const isError = solvingErrors.result?.[idx];
+
+                              return (
+                                <div key={`mul-add-row-${idx}`} className="flex justify-center">
+                                  <input
+                                    type="text"
+                                    maxLength={1}
+                                    disabled={gameStage !== "SOLVING" || mulStep !== "ADDITION"}
+                                    value={cellVal}
+                                    onChange={(e) => {
+                                      const copy = [...gridResult];
+                                      copy[idx] = e.target.value.replace(/[^0-9]/g, "");
+                                      setGridResult(copy);
+                                    }}
+                                    className={`w-10 h-10 text-center text-lg font-bold border rounded-xl shadow-md transition-all font-mono ${
+                                      isActive 
+                                        ? "bg-indigo-50 border-indigo-500 text-indigo-950 ring-2 ring-indigo-300 animate-pulse font-extrabold" 
+                                        : isError 
+                                          ? "border-red-500 bg-red-50 text-red-700" 
+                                          : cellVal 
+                                            ? "bg-emerald-50 border-emerald-300 text-emerald-950" 
+                                            : "bg-white border-indigo-50 text-indigo-950"
+                                    }`}
+                                    placeholder={isActive ? "?" : ""}
+                                  />
+                                </div>
+                              );
+                            })}
+                          </>
+                        ) : (
+                          <>
+                            {/* Thick Divider line */}
+                            <div className="col-span-6 border-t-4 border-slate-700/85 my-2"></div>
+
+                            {/* ROW 3: Result row */}
+                            {opType === "SUB" && gameStage === "SOLVING" && (
+                              <>
+                                <div className="col-span-2 text-right text-[10px] font-bold text-red-600 pr-2">Emprestar:</div>
+                                {[0, 1, 2, 3].map((idx) => {
+                                  const canBorrowFrom = idx < 3 && gridRow1[idx] && gridRow1[idx] !== "0" && !borrowedFrom[idx];
+                                  
+                                  return (
+                                    <div key={`borrow-btn-${idx}`} className="flex justify-center">
+                                      {canBorrowFrom ? (
+                                        <button
+                                          onClick={() => handleBorrow(idx)}
+                                          title={`Pegar emprestado da coluna das ${idx === 2 ? "Dezenas" : idx === 1 ? "Centenas" : "Milhares"}`}
+                                          className="w-7 h-7 bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700 rounded-lg border border-red-200 shadow-sm flex items-center justify-center transition-all cursor-pointer"
+                                        >
+                                          ✂️
+                                        </button>
+                                      ) : (
+                                        <div className="w-7 h-7"></div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                                <div className="col-span-6 h-1 bg-transparent"></div>
+                              </>
+                            )}
+
+                            {/* Result input cells */}
+                            <div className="col-span-2 text-right text-xs font-bold text-emerald-800 pr-2">
+                              {gameStage === "SOLVING" ? "Resultado total:" : "Resultado:"}
+                            </div>
+                            {[0, 1, 2, 3].map((idx) => {
+                              const cellVal = gridResult[idx];
+                              const isActive = gameStage === "SOLVING" && activeColumn === idx;
+                              const isError = solvingErrors.result?.[idx];
+
+                              return (
+                                <div key={`result-${idx}`} className="flex justify-center">
+                                  <input
+                                    type="text"
+                                    maxLength={1}
+                                    disabled={gameStage !== "SOLVING" && gameStage !== "COMPLETED"}
+                                    value={cellVal}
+                                    onChange={(e) => {
+                                      const copy = [...gridResult];
+                                      copy[idx] = e.target.value.replace(/[^0-9]/g, "");
+                                      setGridResult(copy);
+                                    }}
+                                    className={`w-10 h-10 text-center text-lg font-bold border rounded-xl shadow-md transition-all font-mono ${
+                                      isActive 
+                                        ? "bg-indigo-50 border-indigo-500 text-indigo-950 ring-2 ring-indigo-300 animate-pulse font-extrabold" 
+                                        : isError 
+                                          ? "border-red-500 bg-red-50 text-red-700" 
+                                          : cellVal 
+                                            ? "bg-emerald-50 border-emerald-300 text-emerald-950" 
+                                            : "bg-white border-indigo-50 text-indigo-950"
+                                    }`}
+                                    placeholder={isActive ? "?" : ""}
+                                  />
+                                </div>
+                              );
+                            })}
                           </>
                         )}
-
-                        {/* Result input cells */}
-                        <div className="col-span-2 text-right text-xs font-bold text-emerald-800 pr-2">
-                          {gameStage === "SOLVING" ? "Resultado total:" : "Resultado:"}
-                        </div>
-                        {[0, 1, 2, 3].map((idx) => {
-                          const cellVal = gridResult[idx];
-                          const isActive = gameStage === "SOLVING" && activeColumn === idx;
-                          const isError = solvingErrors.result?.[idx];
-
-                          return (
-                            <div key={`result-${idx}`} className="flex justify-center">
-                              <input
-                                type="text"
-                                maxLength={1}
-                                disabled={gameStage !== "SOLVING" && gameStage !== "COMPLETED"}
-                                value={cellVal}
-                                onChange={(e) => {
-                                  const copy = [...gridResult];
-                                  copy[idx] = e.target.value.replace(/[^0-9]/g, "");
-                                  setGridResult(copy);
-                                }}
-                                className={`w-10 h-10 text-center text-lg font-bold border rounded-xl shadow-md transition-all font-mono ${
-                                  isActive 
-                                    ? "bg-indigo-50 border-indigo-500 text-indigo-950 ring-2 ring-indigo-300 animate-pulse font-extrabold" 
-                                    : isError 
-                                      ? "border-red-500 bg-red-50 text-red-700" 
-                                      : cellVal 
-                                        ? "bg-emerald-50 border-emerald-300 text-emerald-950" 
-                                        : "bg-white border-indigo-50 text-indigo-950"
-                                }`}
-                                placeholder={isActive ? "?" : ""}
-                              />
-                            </div>
-                          );
-                        })}
 
                       </div>
                     </div>
@@ -2393,12 +3271,12 @@ export default function MathOperationsGame({ onBackToMenu }: MathOperationsGameP
                             <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">2º Número / Divisor</span>
                             <input
                               type="number"
-                              min={opType === "DIV" || opType === "MUL" ? 2 : 10}
-                              max={opType === "DIV" || opType === "MUL" ? 9 : 999}
+                              min={opType === "DIV" ? 2 : opType === "MUL" ? 2 : 10}
+                              max={opType === "DIV" ? 99 : opType === "MUL" ? 99 : 999}
                               value={opType === "DIV" ? divCustomNum2 : customNum2}
                               onChange={(e) => {
-                                const minVal = opType === "DIV" || opType === "MUL" ? 2 : 10;
-                                const maxVal = opType === "DIV" || opType === "MUL" ? 9 : 999;
+                                const minVal = opType === "DIV" ? 2 : opType === "MUL" ? 2 : 10;
+                                const maxVal = opType === "DIV" ? 99 : opType === "MUL" ? 99 : 999;
                                 const val = Math.max(minVal, Math.min(maxVal, parseInt(e.target.value) || minVal));
                                 if (opType === "DIV") {
                                   setDivCustomNum2(val);

@@ -32,11 +32,16 @@ export default function TutorChat({
   onReset
 }: TutorChatProps) {
   const [aiQuestion, setAiQuestion] = useState("");
-  const chatEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // Scroll to bottom of chat
+  // Scroll to bottom of chat safely without causing parent window scroll jumps
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo({
+        top: scrollContainerRef.current.scrollHeight,
+        behavior: "smooth"
+      });
+    }
   }, [messages, isAiLoading]);
 
   // Format message text with bold highlights and Factorization tables
@@ -130,7 +135,7 @@ export default function TutorChat({
       </div>
 
       {/* Messages Scroll Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-indigo-50/10">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4 bg-indigo-50/10">
         <AnimatePresence initial={false}>
           {messages.map((msg) => {
             const isTutor = msg.role === "model" || msg.role === "system";
@@ -192,7 +197,6 @@ export default function TutorChat({
             </div>
           </motion.div>
         )}
-        <div ref={chatEndRef} />
       </div>
 
       {/* Persistent AI General Question Bar & Form */}
