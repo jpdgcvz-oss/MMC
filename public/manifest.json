@@ -1,7 +1,15 @@
 {
+  "id": "/",
   "short_name": "Capitão Mat",
   "name": "Capitão Matemática: Desafio do MMC",
   "description": "O Capitão Matemática guia o aluno passo a passo no cálculo do Mínimo Múltiplo Comum (MMC) através de fatoração simultânea.",
+  "categories": [
+    "education",
+    "games",
+    "utilities"
+  ],
+  "lang": "pt-BR",
+  "dir": "ltr",
   "icons": [
     {
       "src": "/icon-192.png",
@@ -26,6 +34,29 @@
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshot-1.jpg",
+      "sizes": "1024x1024",
+      "type": "image/jpeg",
+      "form_factor": "narrow",
+      "label": "Tela do Desafio do Capitão Matemática"
+    },
+    {
+      "src": "/screenshot-2.jpg",
+      "sizes": "1024x1024",
+      "type": "image/jpeg",
+      "form_factor": "wide",
+      "label": "Colégio FEPI"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Iniciar Desafio",
+      "url": "/",
+      "description": "Comece a resolver o desafio do MMC agora!"
     }
   ],
   "start_url": "/",
