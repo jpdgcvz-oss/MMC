@@ -60,6 +60,16 @@
     }
   ],
   "start_url": "/",
+  "scope": "/",
+  "prefer_related_applications": false,
+  "related_applications": [],
+  "display_override": [
+    "standalone",
+    "window-controls-overlay"
+  ],
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  },
   "background_color": "#ffffff",
   "display": "standalone",
   "theme_color": "#4f46e5",

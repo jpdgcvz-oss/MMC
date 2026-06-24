@@ -41,6 +41,9 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
+  // Only handle http and https requests to prevent errors with browser extensions
+  if (!event.request.url.startsWith('http')) return;
+
   const url = new URL(event.request.url);
   // Do not intercept API requests or internal socket connections
   if (url.pathname.startsWith('/api') || url.pathname.includes('socket.io') || url.pathname.includes('hot-update')) {

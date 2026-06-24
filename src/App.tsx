@@ -7,7 +7,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { 
   Brain, Sparkles, Compass, Lightbulb, GraduationCap, 
-  HelpCircle, ChevronRight, Award, Trophy, Star 
+  HelpCircle, ChevronRight, Award, Trophy, Star, ArrowLeft
 } from "lucide-react";
 // @ts-ignore
 import fepiLogo from "./assets/images/fepi_logo_1782266389493.jpg";
@@ -24,9 +24,11 @@ import Chalkboard from "./components/Chalkboard";
 import IntroScreen from "./components/IntroScreen";
 import TutorChat from "./components/TutorChat";
 import DivisibilityTips from "./components/DivisibilityTips";
+import MathOperationsGame from "./components/MathOperationsGame";
 
 export default function App() {
   // Navigation / screen states
+  const [appMode, setAppMode] = useState<"MENU" | "MMC_SETUP" | "MMC_GAME" | "OPERATIONS_GAME">("MENU");
   const [inGame, setInGame] = useState(false);
   const [initialNumbers, setInitialNumbers] = useState<number[]>([]);
   const [currentNumbers, setCurrentNumbers] = useState<number[]>([]);
@@ -72,6 +74,7 @@ export default function App() {
   // Resets the game session
   const handleReset = () => {
     setInGame(false);
+    setAppMode("MMC_SETUP");
     setInitialNumbers([]);
     setCurrentNumbers([]);
     setGridRows([]);
@@ -99,6 +102,7 @@ export default function App() {
     setPrimesUsed([]);
     setCurrentStepState("ASK_PRIME");
     setInGame(true);
+    setAppMode("MMC_GAME");
     setDivisionInputs(numbers.map(() => ""));
     setStepErrors(numbers.map(() => false));
 
@@ -316,17 +320,103 @@ export default function App() {
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 lg:p-8 flex flex-col justify-center">
         
         <AnimatePresence mode="wait">
-          {!inGame ? (
+          {appMode === "MENU" ? (
+            <motion.div
+              key="main-menu"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.4 }}
+              className="max-w-4xl mx-auto py-6 text-center space-y-12 w-full"
+            >
+              {/* Header block */}
+              <div className="space-y-4">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-100 text-indigo-800 text-xs font-semibold tracking-wider uppercase">
+                  <Brain className="w-3.5 h-3.5 animate-pulse" />
+                  Ambiente de Aprendizado Ativo
+                </div>
+                <h2 className="text-3xl md:text-4xl font-extrabold text-slate-800 tracking-tight leading-tight">
+                  Selecione o seu <span className="text-indigo-600 bg-indigo-50/80 px-3 py-0.5 rounded-2xl border border-indigo-100/50 inline-block">Desafio do Dia</span>
+                </h2>
+                <p className="text-slate-500 max-w-xl mx-auto text-sm leading-relaxed">
+                  Olá, estudante! O Capitão Matemática preparou atividades interativas especiais para exercitar seu raciocínio lógico e suas habilidades numéricas. Escolha uma para começar!
+                </p>
+              </div>
+
+              {/* Selection cards bento layout */}
+              <div className="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto w-full">
+                
+                {/* CARD 1: MMC Challenge */}
+                <motion.div
+                  whileHover={{ scale: 1.02, y: -4 }}
+                  onClick={() => setAppMode("MMC_SETUP")}
+                  className="bg-white border border-slate-100 hover:border-indigo-300 rounded-3xl p-6 shadow-xl shadow-slate-100/30 cursor-pointer text-left flex flex-col justify-between group transition-all h-64 md:h-72 select-none"
+                >
+                  <div className="space-y-4">
+                    <span className="p-3 bg-indigo-50 text-indigo-700 rounded-2xl inline-block group-hover:bg-indigo-600 group-hover:text-white transition-all">
+                      <GraduationCap className="w-6 h-6" />
+                    </span>
+                    <div className="space-y-2">
+                      <h3 className="text-lg font-extrabold text-slate-800 group-hover:text-indigo-600 transition-colors">
+                        Desafio do MMC com o Capitão
+                      </h3>
+                      <p className="text-xs text-slate-500 leading-relaxed">
+                        Aprenda Mínimo Múltiplo Comum através do diálogo ativo! Escolha os números, identifique os primos divisores e preencha o quadro-negro virtual com ajuda pedagógica da nossa IA.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between pt-4 border-t border-slate-50">
+                    <span className="text-xs font-bold text-indigo-600">Acessar Desafio</span>
+                    <ChevronRight className="w-4 h-4 text-indigo-600 transform group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </motion.div>
+
+                {/* CARD 2: Operations assembler */}
+                <motion.div
+                  whileHover={{ scale: 1.02, y: -4 }}
+                  onClick={() => setAppMode("OPERATIONS_GAME")}
+                  className="bg-white border border-slate-100 hover:border-indigo-300 rounded-3xl p-6 shadow-xl shadow-slate-100/30 cursor-pointer text-left flex flex-col justify-between group transition-all h-64 md:h-72 select-none"
+                >
+                  <div className="space-y-4">
+                    <span className="p-3 bg-amber-50 text-amber-600 rounded-2xl inline-block group-hover:bg-amber-500 group-hover:text-white transition-all">
+                      <Star className="w-6 h-6 fill-amber-400 text-amber-500 group-hover:fill-amber-200" />
+                    </span>
+                    <div className="space-y-2">
+                      <h3 className="text-lg font-extrabold text-slate-800 group-hover:text-indigo-600 transition-colors">
+                        Operações Básicas
+                      </h3>
+                      <p className="text-xs text-slate-500 leading-relaxed">
+                        Aprenda a armar e resolver contas de Adição, Subtração, Multiplicação e Divisão passo a passo. Pratique o alinhamento em colunas (C, D, U), "vai um" e empréstimos em um caderno quadriculado virtual.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between pt-4 border-t border-slate-50">
+                    <span className="text-xs font-bold text-indigo-600">Acessar Atividade</span>
+                    <ChevronRight className="w-4 h-4 text-indigo-600 transform group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </motion.div>
+
+              </div>
+            </motion.div>
+          ) : appMode === "MMC_SETUP" ? (
             <motion.div
               key="intro"
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -15 }}
               transition={{ duration: 0.4 }}
+              className="space-y-4"
             >
+              <button
+                onClick={() => setAppMode("MENU")}
+                className="flex items-center gap-2 text-slate-500 hover:text-slate-800 font-semibold text-sm transition-colors cursor-pointer bg-white px-4 py-2.5 rounded-2xl border border-slate-100 shadow-sm mb-2"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Voltar para o Menu Principal
+              </button>
               <IntroScreen onStartGame={handleStartGame} />
             </motion.div>
-          ) : (
+          ) : appMode === "MMC_GAME" ? (
             <motion.div
               key="game"
               initial={{ opacity: 0, scale: 0.98 }}
@@ -406,6 +496,17 @@ export default function App() {
 
               </div>
 
+            </motion.div>
+          ) : (
+            <motion.div
+              key="operations"
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.98 }}
+              transition={{ duration: 0.4 }}
+              className="w-full"
+            >
+              <MathOperationsGame onBackToMenu={() => setAppMode("MENU")} />
             </motion.div>
           )}
         </AnimatePresence>

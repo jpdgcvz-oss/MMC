@@ -1,6 +1,6 @@
 {
   "name": "Capitão Matemática",
-  "description": "O Capitão Matemática guia o aluno passo a passo no cálculo do Mínimo Múltiplo Comum (MMC) através de metodologias ativas e fatoração simultânea.",
+  "description": "O Capitão Matemática guia o aluno passo a passo nas Operações Básicas (soma, subtração, multiplicação e divisão) e no cálculo de MMC através de metodologias ativas.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
