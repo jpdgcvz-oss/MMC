@@ -39,17 +39,17 @@
   "screenshots": [
     {
       "src": "/screenshot-1.jpg",
-      "sizes": "1024x1024",
+      "sizes": "768x1376",
       "type": "image/jpeg",
       "form_factor": "narrow",
       "label": "Tela do Desafio do Capitão Matemática"
     },
     {
       "src": "/screenshot-2.jpg",
-      "sizes": "1024x1024",
+      "sizes": "1376x768",
       "type": "image/jpeg",
       "form_factor": "wide",
-      "label": "Colégio FEPI"
+      "label": "Capitão Matemática"
     }
   ],
   "shortcuts": [

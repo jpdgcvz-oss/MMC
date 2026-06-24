@@ -8,10 +8,8 @@ import { motion, AnimatePresence } from "motion/react";
 import { 
   Brain, Sparkles, Compass, Lightbulb, GraduationCap, 
   HelpCircle, ChevronRight, Award, Trophy, Star, ArrowLeft,
-  Check, ArrowRight, RefreshCw
+  Check, ArrowRight, RefreshCw, Download, Smartphone, Monitor, X
 } from "lucide-react";
-// @ts-ignore
-import fepiLogo from "./assets/images/fepi_logo_1782266389493.jpg";
 import { ChatMessage, StepState } from "./types";
 import { 
   generateSteps, 
@@ -50,6 +48,41 @@ export default function App() {
   const [primeWrong, setPrimeWrong] = useState<number[]>([]);
   const [divisionWrong, setDivisionWrong] = useState<string[]>([]);
   const [multiplyWrong, setMultiplyWrong] = useState<string[]>([]);
+
+  // PWA states
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isInstallable, setIsInstallable] = useState(false);
+  const [showPwaModal, setShowPwaModal] = useState(false);
+  const [isPwaInstalled, setIsPwaInstalled] = useState(false);
+
+  useEffect(() => {
+    // Check if running in standalone mode (already installed PWA)
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true;
+    setIsPwaInstalled(isStandalone);
+
+    const handleBeforeInstallPrompt = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setIsInstallable(true);
+    };
+
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const handleInstallPWA = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setIsPwaInstalled(true);
+      setIsInstallable(false);
+    }
+    setDeferredPrompt(null);
+  };
 
   // Reset wrong answers when the stage changes or numbers change
   useEffect(() => {
@@ -402,13 +435,6 @@ export default function App() {
       <header className="bg-white border-b border-indigo-50 py-4 px-6 select-none shadow-xl shadow-indigo-100/10">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <img 
-              src={fepiLogo} 
-              alt="Colégio FEPI" 
-              className="h-10 w-auto object-contain" 
-              referrerPolicy="no-referrer"
-            />
-            <div className="h-6 w-px bg-slate-200"></div>
             <div>
               <h1 className="text-lg font-bold text-slate-800 tracking-tight flex items-center gap-2">
                 Capitão Matemática: Desafio do MMC
@@ -420,7 +446,16 @@ export default function App() {
           </div>
           
           <div className="hidden sm:flex items-center gap-4 text-xs font-semibold text-slate-500">
-            <span className="flex items-center gap-1.5 text-indigo-700 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100/50">
+            {!isPwaInstalled && (
+              <button
+                onClick={() => setShowPwaModal(true)}
+                className="flex items-center gap-1.5 text-emerald-750 bg-emerald-50 hover:bg-emerald-100/80 px-3 py-1.5 rounded-full border border-emerald-200 transition-all cursor-pointer shadow-sm animate-pulse"
+              >
+                <Smartphone className="w-3.5 h-3.5 text-emerald-600" />
+                Instalar App 📱
+              </button>
+            )}
+            <span className="flex items-center gap-1.5 text-indigo-700 bg-indigo-50 px-3 py-1.5 rounded-full border border-indigo-100/50">
               <Brain className="w-3.5 h-3.5 animate-pulse" />
               Capitão Disponível
             </span>
@@ -779,6 +814,151 @@ export default function App() {
           </div>
         </div>
       </footer>
+
+      {/* PWA Installation Modal */}
+      <AnimatePresence>
+        {showPwaModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowPwaModal(false)}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            />
+
+            {/* Modal Body */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ type: "spring", duration: 0.5 }}
+              className="bg-white rounded-3xl p-6 md:p-8 max-w-xl w-full relative z-10 shadow-2xl border border-slate-100 flex flex-col max-h-[90vh] overflow-y-auto font-sans"
+            >
+              {/* Close Button */}
+              <button
+                onClick={() => setShowPwaModal(false)}
+                className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-50 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="space-y-6">
+                {/* Header */}
+                <div className="text-center space-y-2">
+                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 mb-2">
+                    <Smartphone className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-xl font-extrabold text-slate-800 tracking-tight">
+                    Instalar Capitão Matemática
+                  </h3>
+                  <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                    Transforme nosso site em um aplicativo nativo no seu dispositivo em poucos segundos!
+                  </p>
+                </div>
+
+                {/* Benefits */}
+                <div className="bg-indigo-50/50 border border-indigo-100/50 rounded-2xl p-4 space-y-3 text-left">
+                  <h4 className="text-xs font-extrabold text-indigo-900 uppercase tracking-wider">
+                    ✨ Por que instalar?
+                  </h4>
+                  <ul className="space-y-2.5 text-xs text-indigo-950">
+                    <li className="flex items-start gap-2.5">
+                      <span className="flex-shrink-0 w-4 h-4 bg-indigo-200 text-indigo-700 rounded-full flex items-center justify-center font-bold text-[10px]">✓</span>
+                      <div>
+                        <strong className="font-bold">Funciona Sem Internet:</strong> Estude e divirta-se mesmo quando estiver offline ou sem dados.
+                      </div>
+                    </li>
+                    <li className="flex items-start gap-2.5">
+                      <span className="flex-shrink-0 w-4 h-4 bg-indigo-200 text-indigo-700 rounded-full flex items-center justify-center font-bold text-[10px]">✓</span>
+                      <div>
+                        <strong className="font-bold">Experiência Imersiva:</strong> Tela cheia, sem barras do navegador ou interrupções.
+                      </div>
+                    </li>
+                    <li className="flex items-start gap-2.5">
+                      <span className="flex-shrink-0 w-4 h-4 bg-indigo-200 text-indigo-700 rounded-full flex items-center justify-center font-bold text-[10px]">✓</span>
+                      <div>
+                        <strong className="font-bold">Acesso Rápido:</strong> Um lindo ícone na sua tela inicial para começar a jogar imediatamente.
+                      </div>
+                    </li>
+                  </ul>
+                </div>
+
+                {/* Direct Action or Platform Instructions */}
+                {isInstallable && deferredPrompt ? (
+                  <div className="space-y-3">
+                    <button
+                      onClick={handleInstallPWA}
+                      className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold py-3.5 px-6 rounded-2xl shadow-lg shadow-indigo-100 text-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <Download className="w-4 h-4" />
+                      Instalar Aplicativo Agora
+                    </button>
+                    <p className="text-[11px] text-center text-slate-400">
+                      Disponível para Chrome, Edge e outros navegadores compatíveis.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4 text-left">
+                    <div className="border-t border-slate-100 pt-4">
+                      <h4 className="text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-3">
+                        📱 Como Instalar no Celular
+                      </h4>
+                      
+                      <div className="grid sm:grid-cols-2 gap-3">
+                        {/* iOS */}
+                        <div className="bg-slate-50 border border-slate-100 p-3 rounded-2xl space-y-2">
+                          <span className="text-[10px] font-extrabold text-indigo-600 uppercase block">iPhone ou iPad (iOS)</span>
+                          <ol className="text-[11px] text-slate-600 space-y-1.5 list-decimal pl-4">
+                            <li>Abra o site no navegador <strong className="font-bold text-slate-800">Safari</strong>.</li>
+                            <li>Toque no botão de <strong className="font-bold text-slate-800">Compartilhar</strong> <span className="inline-block px-1 py-0.5 bg-slate-200 rounded text-[9px] font-bold">📤</span> (seta para cima).</li>
+                            <li>Role para baixo e selecione <strong className="font-bold text-indigo-600">"Adicionar à Tela de Início"</strong>.</li>
+                            <li>Toque em <strong className="font-bold text-slate-800">"Adicionar"</strong> no canto superior direito.</li>
+                          </ol>
+                        </div>
+
+                        {/* Android */}
+                        <div className="bg-slate-50 border border-slate-100 p-3 rounded-2xl space-y-2">
+                          <span className="text-[10px] font-extrabold text-indigo-600 uppercase block">Android (Chrome)</span>
+                          <ol className="text-[11px] text-slate-600 space-y-1.5 list-decimal pl-4">
+                            <li>Toque no ícone de <strong className="font-bold text-slate-800">três pontos</strong> <span className="inline-block px-1 py-0.5 bg-slate-200 rounded text-[9px] font-bold">⋮</span> no canto superior direito.</li>
+                            <li>Selecione a opção <strong className="font-bold text-indigo-600">"Instalar aplicativo"</strong> ou <strong className="font-bold text-indigo-600">"Adicionar à tela inicial"</strong>.</li>
+                            <li>Confirme tocando em <strong className="font-bold text-slate-800">"Instalar"</strong>.</li>
+                          </ol>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="border-t border-slate-100 pt-4">
+                      <h4 className="text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-2">
+                        💻 Como Instalar no Computador
+                      </h4>
+                      <p className="text-[11px] text-slate-600 leading-relaxed">
+                        No Chrome ou Edge, clique no ícone de <strong className="font-bold text-indigo-600">instalação (monitor com seta para baixo)</strong> localizado na barra de endereço superior, ao lado do botão de favoritos, ou clique nos três pontos no canto direito e escolha <strong className="font-bold text-indigo-600">"Instalar Capitão Matemática..."</strong>.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Footer status */}
+                <div className="border-t border-slate-100 pt-4 text-center">
+                  <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-slate-400 bg-slate-50 px-3 py-1 rounded-full">
+                    {isPwaInstalled ? (
+                      <span className="text-emerald-600 flex items-center gap-1">
+                        <Check className="w-3.5 h-3.5" />
+                        O aplicativo já está instalado e rodando!
+                      </span>
+                    ) : (
+                      "PWA configurado por Prof. João Paulo Dutra"
+                    )}
+                  </span>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
     </div>
   );
