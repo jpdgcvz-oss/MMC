@@ -7,7 +7,8 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { 
   Brain, Sparkles, Compass, Lightbulb, GraduationCap, 
-  HelpCircle, ChevronRight, Award, Trophy, Star, ArrowLeft
+  HelpCircle, ChevronRight, Award, Trophy, Star, ArrowLeft,
+  Check, ArrowRight, RefreshCw
 } from "lucide-react";
 // @ts-ignore
 import fepiLogo from "./assets/images/fepi_logo_1782266389493.jpg";
@@ -44,6 +45,119 @@ export default function App() {
   // Chat thread states
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isAiLoading, setIsAiLoading] = useState(false);
+
+  // Multiple Choice States for MMC Game
+  const [primeWrong, setPrimeWrong] = useState<number[]>([]);
+  const [divisionWrong, setDivisionWrong] = useState<string[]>([]);
+  const [multiplyWrong, setMultiplyWrong] = useState<string[]>([]);
+
+  // Reset wrong answers when the stage changes or numbers change
+  useEffect(() => {
+    setPrimeWrong([]);
+    setDivisionWrong([]);
+    setMultiplyWrong([]);
+  }, [currentNumbers, activePrime, currentStepState]);
+
+  // Helper: 4 Prime Options for ASK_PRIME
+  const getPrimeOptions = () => {
+    const correctP = getSmallestPrimeDivisor(currentNumbers);
+    const allPrimes = [2, 3, 5, 7, 11, 13];
+    const potentialDistractors = allPrimes.filter(p => p !== correctP);
+    const distractors = potentialDistractors.slice(0, 3);
+    
+    const options = [
+      { label: `Primo ${correctP}`, isCorrect: true, value: correctP },
+      ...distractors.map(d => ({ label: `Primo ${d}`, isCorrect: false, value: d }))
+    ];
+    return options.sort((a, b) => a.value - b.value);
+  };
+
+  // Helper: 4 Division Options
+  const getDivisionOptions = () => {
+    if (!activePrime) return [];
+    const correct = currentNumbers.map(n => n % activePrime === 0 ? n / activePrime : n);
+    const correctLabel = correct.join(", ");
+    
+    // Distractor 1: first element left as original
+    const dist1 = [...correct];
+    dist1[0] = currentNumbers[0];
+    const label1 = dist1.join(", ");
+
+    // Distractor 2: last element left as original
+    const dist2 = [...correct];
+    dist2[dist2.length - 1] = currentNumbers[currentNumbers.length - 1];
+    const label2 = dist2.join(", ");
+
+    // Distractor 3: elements offset by 1
+    const dist3 = correct.map(n => n > 1 ? n - 1 : n + 1);
+    const label3 = dist3.join(", ");
+
+    const options = [
+      { label: correctLabel, isCorrect: true, value: correct },
+      { label: label1, isCorrect: false, value: dist1 },
+      { label: label2, isCorrect: false, value: dist2 },
+      { label: label3, isCorrect: false, value: dist3 },
+    ];
+
+    const unique: typeof options = [];
+    const seen = new Set<string>();
+    for (const opt of options) {
+      if (!seen.has(opt.label)) {
+        seen.add(opt.label);
+        unique.push(opt);
+      }
+    }
+
+    let fillIdx = 1;
+    while (unique.length < 4) {
+      const fake = correct.map(n => n + fillIdx);
+      const fakeLabel = fake.join(", ");
+      if (!seen.has(fakeLabel)) {
+        seen.add(fakeLabel);
+        unique.push({ label: fakeLabel, isCorrect: false, value: fake });
+      }
+      fillIdx++;
+    }
+
+    return unique.sort((a, b) => a.label.localeCompare(b.label));
+  };
+
+  // Helper: 4 Multiply Options
+  const getMultiplyOptions = () => {
+    const correctMMC = primesUsed.reduce((acc, val) => acc * val, 1);
+    const dist1 = correctMMC % 2 === 0 ? correctMMC / 2 : correctMMC - 5;
+    const dist2 = correctMMC + (currentNumbers[0] || 4);
+    const dist3 = correctMMC * 2;
+
+    const options = [
+      { label: correctMMC.toString(), isCorrect: true, value: correctMMC },
+      { label: dist1.toString(), isCorrect: false, value: dist1 },
+      { label: dist2.toString(), isCorrect: false, value: dist2 },
+      { label: dist3.toString(), isCorrect: false, value: dist3 },
+    ];
+
+    const unique: typeof options = [];
+    const seen = new Set<string>();
+    for (const opt of options) {
+      if (!seen.has(opt.label) && parseInt(opt.label) > 0) {
+        seen.add(opt.label);
+        unique.push(opt);
+      }
+    }
+
+    let fillIdx = 1;
+    while (unique.length < 4) {
+      const val = correctMMC + 10 * fillIdx;
+      const fakeLabel = val.toString();
+      if (!seen.has(fakeLabel)) {
+        seen.add(fakeLabel);
+        unique.push({ label: fakeLabel, isCorrect: false, value: val });
+      }
+      fillIdx++;
+    }
+
+    return unique.sort((a, b) => parseInt(a.label) - parseInt(b.label));
+  };
 
   // Initial welcome message on mounting
   useEffect(() => {
@@ -431,14 +545,10 @@ export default function App() {
                   messages={messages}
                   currentStepState={currentStepState}
                   onSendMessage={handleSendMessage}
-                  onAnswerPrime={handleAnswerPrime}
-                  onAnswerDivision={handleAnswerDivision}
-                  onAnswerMultiply={handleAnswerMultiply}
                   activeNumbers={currentNumbers}
                   activePrime={activePrime}
                   isAiLoading={isAiLoading}
                   onReset={handleReset}
-                  primesUsed={primesUsed}
                 />
 
                 <DivisibilityTips />
@@ -481,6 +591,149 @@ export default function App() {
                   onDivisionInputChange={handleDivisionInputChange}
                   stepErrors={stepErrors}
                 />
+
+                {/* Multiple Choice Options right below the Chalkboard */}
+                {currentStepState !== "INTRO" && currentStepState !== "ASK_DIVISION" && currentStepState !== "CONGRATULATIONS" && (
+                  <div className="space-y-3 p-5 bg-amber-50/80 rounded-3xl border border-amber-200 shadow-md animate-fade-in relative z-20">
+                    {currentStepState === "ASK_PRIME" && (
+                      <div className="space-y-3">
+                        <span className="text-xs font-extrabold text-amber-800 uppercase tracking-wider block text-center">
+                          Etapa 1: Escolha o menor divisor primo para {currentNumbers.join(", ")}:
+                        </span>
+                        <div className="grid grid-cols-2 gap-2 max-w-md mx-auto">
+                          {getPrimeOptions().map((opt, idx) => {
+                            const letter = ["A", "B", "C", "D"][idx] || "A";
+                            const isWrongClicked = primeWrong.includes(opt.value);
+                            return (
+                              <button
+                                key={opt.value}
+                                type="button"
+                                disabled={isWrongClicked}
+                                onClick={() => {
+                                  if (!opt.isCorrect) {
+                                    setPrimeWrong(prev => [...prev, opt.value]);
+                                  }
+                                  handleAnswerPrime(opt.value);
+                                }}
+                                className={`flex items-center justify-center gap-2.5 p-3 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
+                                  isWrongClicked
+                                    ? "bg-red-50 border-red-200 text-red-400 line-through cursor-not-allowed opacity-60"
+                                    : "bg-white border-amber-200 hover:border-amber-400 hover:bg-amber-100/30 text-slate-700 shadow-sm hover:shadow"
+                                }`}
+                              >
+                                <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-extrabold flex-shrink-0 ${
+                                  isWrongClicked ? "bg-red-200 text-red-800" : "bg-amber-100 text-amber-800"
+                                }`}>
+                                  {letter}
+                                </span>
+                                <span className="font-mono">{opt.label}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {currentStepState === "ASK_MULTIPLY_MMC" && (
+                      <div className="space-y-3">
+                        <span className="text-xs font-extrabold text-amber-800 uppercase tracking-wider block text-center">
+                          Etapa Final: Multiplique os primos {primesUsed.join(" × ")} para obter o MMC:
+                        </span>
+                        <div className="grid grid-cols-2 gap-2 max-w-md mx-auto">
+                          {getMultiplyOptions().map((opt, idx) => {
+                            const letter = ["A", "B", "C", "D"][idx] || "A";
+                            const isWrongClicked = multiplyWrong.includes(opt.label);
+                            return (
+                              <button
+                                key={opt.label}
+                                type="button"
+                                disabled={isWrongClicked}
+                                onClick={() => {
+                                  if (!opt.isCorrect) {
+                                    setMultiplyWrong(prev => [...prev, opt.label]);
+                                  }
+                                  handleAnswerMultiply(opt.value);
+                                }}
+                                className={`flex items-center justify-center gap-2.5 p-3 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
+                                  isWrongClicked
+                                    ? "bg-red-50 border-red-200 text-red-400 line-through cursor-not-allowed opacity-60"
+                                    : "bg-white border-amber-200 hover:border-amber-400 hover:bg-amber-100/30 text-slate-700 shadow-sm hover:shadow"
+                                }`}
+                              >
+                                <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-extrabold flex-shrink-0 ${
+                                  isWrongClicked ? "bg-red-200 text-red-800" : "bg-amber-100 text-amber-800"
+                                }`}>
+                                  {letter}
+                                </span>
+                                <span className="font-mono">MMC = {opt.label}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* For ASK_DIVISION step, we want the division choices to be right below the chalkboard as well! */}
+                {currentStepState === "ASK_DIVISION" && (
+                  <div className="space-y-3 p-5 bg-amber-50/80 rounded-3xl border border-amber-200 shadow-md animate-fade-in relative z-20">
+                    <span className="text-xs font-extrabold text-amber-800 uppercase tracking-wider block text-center">
+                      Etapa 2: Escolha o resultado da divisão de [{currentNumbers.join(", ")}] por {activePrime}:
+                    </span>
+                    <div className="grid grid-cols-2 gap-2 max-w-md mx-auto">
+                      {getDivisionOptions().map((opt, idx) => {
+                        const letter = ["A", "B", "C", "D"][idx] || "A";
+                        const isWrongClicked = divisionWrong.includes(opt.label);
+                        return (
+                          <button
+                            key={opt.label}
+                            type="button"
+                            disabled={isWrongClicked}
+                            onClick={() => {
+                              if (!opt.isCorrect) {
+                                setDivisionWrong(prev => [...prev, opt.label]);
+                              }
+                              handleAnswerDivision(opt.value);
+                            }}
+                            className={`flex items-center justify-center gap-2.5 p-3 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
+                              isWrongClicked
+                                ? "bg-red-50 border-red-200 text-red-400 line-through cursor-not-allowed opacity-60"
+                                : "bg-white border-amber-200 hover:border-amber-400 hover:bg-amber-100/30 text-slate-700 shadow-sm hover:shadow"
+                            }`}
+                          >
+                            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-extrabold flex-shrink-0 ${
+                              isWrongClicked ? "bg-red-200 text-red-800" : "bg-amber-100 text-amber-800"
+                            }`}>
+                              {letter}
+                            </span>
+                            <span className="font-mono">[{opt.label}]</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p className="text-[10px] text-amber-700 text-center italic mt-1 font-semibold">
+                      *Dica: Números não divisíveis repetem eles mesmos!
+                    </p>
+                  </div>
+                )}
+
+                {/* When CONGRATULATIONS, show reset button right under the board! */}
+                {currentStepState === "CONGRATULATIONS" && (
+                  <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-3xl flex items-center justify-between shadow-md">
+                    <span className="text-xs font-extrabold text-emerald-855 flex items-center gap-1.5 animate-pulse">
+                      <Sparkles className="w-4 h-4 text-emerald-500" />
+                      MMC completado com maestria!
+                    </span>
+                    <button
+                      onClick={handleReset}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white py-2 px-4 rounded-xl text-xs font-bold shadow-md hover:shadow-lg transition-all cursor-pointer flex items-center gap-1"
+                    >
+                      Próximo Exercício
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
 
                 {/* Additional Active Learning motivators */}
                 <div className="p-4 rounded-3xl bg-indigo-50/40 border border-indigo-100/50 flex items-start gap-3.5 shadow-sm">

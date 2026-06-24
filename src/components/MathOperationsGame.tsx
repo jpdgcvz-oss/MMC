@@ -1932,178 +1932,9 @@ export default function MathOperationsGame({ onBackToMenu }: MathOperationsGameP
                     })}
                   </div>
 
-                  {/* Multiple Choice Options for solving steps */}
-                  {gameStage === "SOLVING" && currentOptions.length > 0 && (
-                    <div className="mt-4 space-y-2 p-4 bg-indigo-50/15 rounded-2xl border border-indigo-50/30">
-                      <p className="text-[11px] font-bold text-indigo-700 uppercase tracking-wider flex items-center gap-1.5">
-                        <Sparkles className="w-3.5 h-3.5 text-indigo-500 animate-pulse" />
-                        Selecione a resposta correta:
-                      </p>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {currentOptions.map((opt) => {
-                          const isWrong = wrongOptions.includes(opt.id);
-                          const isSelected = selectedOptionId === opt.id;
-                          return (
-                            <button
-                              key={opt.id}
-                              type="button"
-                              disabled={isWrong || selectedOptionId !== null}
-                              onClick={() => handleSelectOption(opt)}
-                              className={`p-3 rounded-xl border text-left text-xs font-bold transition-all flex items-center justify-between cursor-pointer ${
-                                isSelected
-                                  ? "bg-emerald-500 border-emerald-600 text-white shadow-md scale-[1.02]"
-                                  : isWrong
-                                    ? "bg-red-50 border-red-200 text-red-400 line-through cursor-not-allowed opacity-60"
-                                    : "bg-white border-slate-100 hover:border-indigo-300 text-slate-700 hover:bg-indigo-50/20 shadow-sm hover:shadow"
-                              }`}
-                            >
-                              <span className="line-clamp-1">{opt.label}</span>
-                              {isSelected && <Check className="w-3.5 h-3.5 text-white flex-shrink-0 ml-1" />}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
+
                 </div>
 
-                <div className="mt-6 space-y-3">
-                  {gameStage === "SETUP" ? (
-                    <button
-                      onClick={handleVerifySetup}
-                      className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-indigo-100 hover:shadow-xl hover:shadow-indigo-200 transition-all flex items-center justify-center gap-2 cursor-pointer text-xs"
-                    >
-                      Verificar Montagem no Quadro
-                      <Check className="w-4 h-4" />
-                    </button>
-                  ) : gameStage === "SOLVING" ? (
-                    opType !== "DIV" && (
-                      <button
-                        onClick={handleVerifyColumn}
-                        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-indigo-100 hover:shadow-xl hover:shadow-indigo-200 transition-all flex items-center justify-center gap-2 cursor-pointer text-xs"
-                      >
-                        Confirmar Resposta da Coluna
-                        <Check className="w-4 h-4" />
-                      </button>
-                    )
-                  ) : (
-                    <button
-                      onClick={() => setGameStage("SELECT")}
-                      className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-indigo-100 hover:shadow-xl hover:shadow-indigo-200 transition-all flex items-center justify-center gap-2 cursor-pointer text-xs"
-                    >
-                      Praticar Outra Conta
-                      <RefreshCw className="w-4 h-4" />
-                    </button>
-                  )}
-
-                  <button
-                    onClick={handleRestartSession}
-                    className="w-full bg-slate-50 hover:bg-slate-100 text-slate-600 font-bold py-2 px-4 rounded-xl border border-slate-200 transition-all flex items-center justify-center gap-2 cursor-pointer text-xs"
-                  >
-                    Recomeçar Este Desafio
-                    <RefreshCw className="w-3.5 h-3.5" />
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      if (opType === "DIV") {
-                        setDivCustomNum1(num1);
-                        setDivCustomNum2(num2);
-                      } else {
-                        setCustomNum1(num1);
-                        setCustomNum2(num2);
-                        setCustomType(opType);
-                      }
-                      setShowChangeNumbersModal(!showChangeNumbersModal);
-                    }}
-                    className="w-full bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold py-2 px-4 rounded-xl border border-indigo-200/50 transition-all flex items-center justify-center gap-2 cursor-pointer text-xs"
-                  >
-                    Inserir Outros Números
-                    <Plus className="w-3.5 h-3.5" />
-                  </button>
-
-                  {showChangeNumbersModal && (
-                    <div className="p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100 space-y-3 mt-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-bold text-indigo-900 uppercase tracking-wider font-mono">Inserir Novos Números</span>
-                        <button 
-                          onClick={() => setShowChangeNumbersModal(false)}
-                          className="text-slate-400 hover:text-slate-600 text-xs font-bold"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="space-y-1">
-                          <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">1º Número / Dividendo</span>
-                          <input
-                            type="number"
-                            min={10}
-                            max={999}
-                            value={opType === "DIV" ? divCustomNum1 : customNum1}
-                            onChange={(e) => {
-                              const val = Math.max(10, Math.min(999, parseInt(e.target.value) || 10));
-                              if (opType === "DIV") {
-                                setDivCustomNum1(val);
-                              } else {
-                                setCustomNum1(val);
-                              }
-                            }}
-                            className="w-full text-center text-xs font-extrabold bg-white border border-slate-200 rounded-lg py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500 shadow-sm"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">2º Número / Divisor</span>
-                          <input
-                            type="number"
-                            min={opType === "DIV" || opType === "MUL" ? 2 : 10}
-                            max={opType === "DIV" || opType === "MUL" ? 9 : 999}
-                            value={opType === "DIV" ? divCustomNum2 : customNum2}
-                            onChange={(e) => {
-                              const minVal = opType === "DIV" || opType === "MUL" ? 2 : 10;
-                              const maxVal = opType === "DIV" || opType === "MUL" ? 9 : 999;
-                              const val = Math.max(minVal, Math.min(maxVal, parseInt(e.target.value) || minVal));
-                              if (opType === "DIV") {
-                                setDivCustomNum2(val);
-                              } else {
-                                setCustomNum2(val);
-                              }
-                            }}
-                            className="w-full text-center text-xs font-extrabold bg-white border border-slate-200 rounded-lg py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500 shadow-sm"
-                          />
-                        </div>
-                      </div>
-                      
-                      {opType === "SUB" && customNum1 < customNum2 && (
-                        <p className="text-[9px] text-red-600 font-bold">⚠️ O primeiro número deve ser maior!</p>
-                      )}
-                      {opType === "DIV" && divCustomNum1 < divCustomNum2 && (
-                        <p className="text-[9px] text-red-600 font-bold">⚠️ O dividendo deve ser maior!</p>
-                      )}
-
-                      <button
-                        onClick={() => {
-                          const n1 = opType === "DIV" ? divCustomNum1 : customNum1;
-                          const n2 = opType === "DIV" ? divCustomNum2 : customNum2;
-                          if (opType === "SUB" && n1 < n2) return;
-                          if (opType === "DIV" && n1 < n2) return;
-                          
-                          setNum1(n1);
-                          setNum2(n2);
-                          initGameGrid(n1, n2, opType);
-                          setShowChangeNumbersModal(false);
-                        }}
-                        disabled={
-                          (opType === "SUB" && customNum1 < customNum2) ||
-                          (opType === "DIV" && divCustomNum1 < divCustomNum2)
-                        }
-                        className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white text-[11px] font-bold py-2 rounded-xl transition-all shadow-md"
-                      >
-                        Salvar e Reiniciar Conta
-                      </button>
-                    </div>
-                  )}
-                </div>
               </div>
 
               {/* DIVISIBILITY / PEDAGOGICAL CHEATSHEET FOR OPERATIONS */}
@@ -2162,7 +1993,7 @@ export default function MathOperationsGame({ onBackToMenu }: MathOperationsGameP
 
                   {/* Math Grid Workspace */}
                   {opType === "DIV" ? (
-                    <div className="flex flex-col items-center justify-center py-6 min-h-[320px]">
+                    <div className="flex flex-col items-center justify-center pt-2 pb-4">
                       <div className="relative grid grid-cols-6 gap-y-3 gap-x-2 items-center max-w-sm w-full font-mono">
                         
                         {/* Grouping Arc */}
@@ -2227,7 +2058,7 @@ export default function MathOperationsGame({ onBackToMenu }: MathOperationsGameP
                       </div>
                     </div>
                   ) : (
-                    <div className="flex flex-col items-center justify-center py-6">
+                    <div className="flex flex-col items-center justify-center pt-2 pb-4">
                       <div className="grid grid-cols-6 gap-y-3 gap-x-2 items-center max-w-sm w-full">
                         
                         {/* Grid Header labels: empty, empty, M, C, D, U */}
@@ -2436,6 +2267,180 @@ export default function MathOperationsGame({ onBackToMenu }: MathOperationsGameP
                       </div>
                     </div>
                   )}
+
+                  {/* Multiple Choice Options for solving steps */}
+                  {gameStage === "SOLVING" && currentOptions.length > 0 && (
+                    <div className="mt-2 mb-4 space-y-2 p-4 bg-amber-50/80 rounded-2xl border border-amber-200 shadow-md animate-fade-in relative z-20 max-w-sm mx-auto w-full">
+                      <p className="text-[11px] font-extrabold text-amber-800 uppercase tracking-wider flex items-center gap-1.5 justify-center">
+                        <Sparkles className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
+                        Escolha a resposta correta:
+                      </p>
+                      <div className="grid grid-cols-2 gap-2 mt-1">
+                        {currentOptions.map((opt) => {
+                          const isWrong = wrongOptions.includes(opt.id);
+                          const isSelected = selectedOptionId === opt.id;
+                          return (
+                            <button
+                              key={opt.id}
+                              type="button"
+                              disabled={isWrong || selectedOptionId !== null}
+                              onClick={() => handleSelectOption(opt)}
+                              className={`p-2.5 rounded-xl border text-center text-xs font-bold transition-all flex items-center justify-center cursor-pointer ${
+                                isSelected
+                                  ? "bg-emerald-500 border-emerald-600 text-white shadow-md scale-[1.02]"
+                                  : isWrong
+                                    ? "bg-red-50 border-red-200 text-red-400 line-through cursor-not-allowed opacity-60"
+                                    : "bg-white border-slate-200 hover:border-indigo-300 text-slate-700 hover:bg-indigo-50/20 shadow-sm hover:shadow"
+                              }`}
+                            >
+                              <span className="line-clamp-1">{opt.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Botões de Ação Próximos às Resoluções */}
+                  <div className="mt-6 space-y-3 border-t border-indigo-100/50 pt-5">
+                    {gameStage === "SETUP" ? (
+                      <button
+                        onClick={handleVerifySetup}
+                        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-indigo-100 hover:shadow-xl hover:shadow-indigo-200 transition-all flex items-center justify-center gap-2 cursor-pointer text-xs"
+                      >
+                        Verificar Montagem no Quadro
+                        <Check className="w-4 h-4" />
+                      </button>
+                    ) : gameStage === "SOLVING" ? (
+                      opType !== "DIV" && (
+                        <button
+                          onClick={handleVerifyColumn}
+                          className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-indigo-100 hover:shadow-xl hover:shadow-indigo-200 transition-all flex items-center justify-center gap-2 cursor-pointer text-xs"
+                        >
+                          Confirmar Resposta da Coluna
+                          <Check className="w-4 h-4" />
+                        </button>
+                      )
+                    ) : (
+                      <button
+                        onClick={() => setGameStage("SELECT")}
+                        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-indigo-100 hover:shadow-xl hover:shadow-indigo-200 transition-all flex items-center justify-center gap-2 cursor-pointer text-xs"
+                      >
+                        Praticar Outra Conta
+                        <RefreshCw className="w-4 h-4" />
+                      </button>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        onClick={handleRestartSession}
+                        className="w-full bg-white hover:bg-slate-50 text-slate-600 font-bold py-2.5 px-3 rounded-xl border border-slate-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer text-xs shadow-sm"
+                      >
+                        Recomeçar Desafio
+                        <RefreshCw className="w-3.5 h-3.5" />
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          if (opType === "DIV") {
+                            setDivCustomNum1(num1);
+                            setDivCustomNum2(num2);
+                          } else {
+                            setCustomNum1(num1);
+                            setCustomNum2(num2);
+                            setCustomType(opType);
+                          }
+                          setShowChangeNumbersModal(!showChangeNumbersModal);
+                        }}
+                        className="w-full bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold py-2.5 px-3 rounded-xl border border-indigo-200/50 transition-all flex items-center justify-center gap-1.5 cursor-pointer text-xs shadow-sm"
+                      >
+                        Mudar Números
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    {showChangeNumbersModal && (
+                      <div className="p-4 bg-white/95 rounded-2xl border border-indigo-100 space-y-3 mt-3 shadow-md">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-bold text-indigo-900 uppercase tracking-wider font-mono">Inserir Novos Números</span>
+                          <button 
+                            onClick={() => setShowChangeNumbersModal(false)}
+                            className="text-slate-400 hover:text-slate-600 text-xs font-bold"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-1">
+                            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">1º Número / Dividendo</span>
+                            <input
+                              type="number"
+                              min={10}
+                              max={999}
+                              value={opType === "DIV" ? divCustomNum1 : customNum1}
+                              onChange={(e) => {
+                                const val = Math.max(10, Math.min(999, parseInt(e.target.value) || 10));
+                                if (opType === "DIV") {
+                                  setDivCustomNum1(val);
+                                } else {
+                                  setCustomNum1(val);
+                                }
+                              }}
+                              className="w-full text-center text-xs font-extrabold bg-white border border-slate-200 rounded-lg py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500 shadow-sm"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">2º Número / Divisor</span>
+                            <input
+                              type="number"
+                              min={opType === "DIV" || opType === "MUL" ? 2 : 10}
+                              max={opType === "DIV" || opType === "MUL" ? 9 : 999}
+                              value={opType === "DIV" ? divCustomNum2 : customNum2}
+                              onChange={(e) => {
+                                const minVal = opType === "DIV" || opType === "MUL" ? 2 : 10;
+                                const maxVal = opType === "DIV" || opType === "MUL" ? 9 : 999;
+                                const val = Math.max(minVal, Math.min(maxVal, parseInt(e.target.value) || minVal));
+                                if (opType === "DIV") {
+                                  setDivCustomNum2(val);
+                                } else {
+                                  setCustomNum2(val);
+                                }
+                              }}
+                              className="w-full text-center text-xs font-extrabold bg-white border border-slate-200 rounded-lg py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500 shadow-sm"
+                            />
+                          </div>
+                        </div>
+                        
+                        {opType === "SUB" && customNum1 < customNum2 && (
+                          <p className="text-[9px] text-red-600 font-bold">⚠️ O primeiro número deve ser maior!</p>
+                        )}
+                        {opType === "DIV" && divCustomNum1 < divCustomNum2 && (
+                          <p className="text-[9px] text-red-600 font-bold">⚠️ O dividendo deve ser maior!</p>
+                        )}
+
+                        <button
+                          onClick={() => {
+                            const n1 = opType === "DIV" ? divCustomNum1 : customNum1;
+                            const n2 = opType === "DIV" ? divCustomNum2 : customNum2;
+                            if (opType === "SUB" && n1 < n2) return;
+                            if (opType === "DIV" && n1 < n2) return;
+                            
+                            setNum1(n1);
+                            setNum2(n2);
+                            initGameGrid(n1, n2, opType);
+                            setShowChangeNumbersModal(false);
+                          }}
+                          disabled={
+                            (opType === "SUB" && customNum1 < customNum2) ||
+                            (opType === "DIV" && divCustomNum1 < divCustomNum2)
+                          }
+                          className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white text-[11px] font-bold py-2 rounded-xl transition-all shadow-md"
+                        >
+                          Salvar e Reiniciar Conta
+                        </button>
+                      </div>
+                    )}
+                  </div>
 
                   {/* Aesthetic indicators */}
                   <div className="mt-4 pt-4 border-t border-indigo-100 flex items-center justify-between text-[11px] font-semibold text-slate-500">

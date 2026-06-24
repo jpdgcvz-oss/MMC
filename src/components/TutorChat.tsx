@@ -6,8 +6,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { 
-  Send, Brain, Sparkles, AlertCircle, HelpCircle, RefreshCw, 
-  ChevronRight, ArrowRight, CornerDownLeft, MessageCircle 
+  Send, Brain, Sparkles, RefreshCw, MessageCircle 
 } from "lucide-react";
 import { ChatMessage, StepState } from "../types";
 // @ts-ignore
@@ -17,159 +16,23 @@ interface TutorChatProps {
   messages: ChatMessage[];
   currentStepState: StepState;
   onSendMessage: (text: string) => void;
-  onAnswerPrime: (prime: number) => void;
-  onAnswerDivision: (results: number[]) => void;
-  onAnswerMultiply: (result: number) => void;
   activeNumbers: number[];
   activePrime?: number;
   isAiLoading: boolean;
   onReset: () => void;
-  primesUsed: number[];
 }
 
 export default function TutorChat({
   messages,
   currentStepState,
   onSendMessage,
-  onAnswerPrime,
-  onAnswerDivision,
-  onAnswerMultiply,
   activeNumbers,
   activePrime,
   isAiLoading,
-  onReset,
-  primesUsed
+  onReset
 }: TutorChatProps) {
-  const [customInput, setCustomInput] = useState("");
   const [aiQuestion, setAiQuestion] = useState("");
-  const [numInputs, setNumInputs] = useState<string[]>([]);
-  
-  // Tracking incorrect clicked multiple-choice options to disable/red-out
-  const [primeWrong, setPrimeWrong] = useState<number[]>([]);
-  const [divisionWrong, setDivisionWrong] = useState<string[]>([]);
-  const [multiplyWrong, setMultiplyWrong] = useState<string[]>([]);
-
   const chatEndRef = useRef<HTMLDivElement>(null);
-
-  // Initialize division inputs whenever the activeNumbers change
-  useEffect(() => {
-    setNumInputs(activeNumbers.map(() => ""));
-    setPrimeWrong([]);
-    setDivisionWrong([]);
-    setMultiplyWrong([]);
-  }, [activeNumbers, activePrime, currentStepState]);
-
-  // Helper: 4 Prime Options for ASK_PRIME
-  const getPrimeOptions = () => {
-    const correctP = getSmallestPrime();
-    const allPrimes = [2, 3, 5, 7, 11, 13];
-    const potentialDistractors = allPrimes.filter(p => p !== correctP);
-    const distractors = potentialDistractors.slice(0, 3);
-    
-    const options = [
-      { label: `Primo ${correctP}`, isCorrect: true, value: correctP },
-      ...distractors.map(d => ({ label: `Primo ${d}`, isCorrect: false, value: d }))
-    ];
-    return options.sort((a, b) => a.value - b.value);
-  };
-
-  // Helper: true smallest prime divisor
-  const getSmallestPrime = () => {
-    const primes = [2, 3, 5, 7, 11, 13];
-    for (const p of primes) {
-      if (activeNumbers.some(n => n > 1 && n % p === 0)) {
-        return p;
-      }
-    }
-    return 2;
-  };
-
-  // Helper: 4 Division Options
-  const getDivisionOptions = () => {
-    if (!activePrime) return [];
-    const correct = activeNumbers.map(n => n % activePrime === 0 ? n / activePrime : n);
-    const correctLabel = correct.join(", ");
-    
-    // Distractor 1: first element left as original
-    const dist1 = [...correct];
-    dist1[0] = activeNumbers[0];
-    const label1 = dist1.join(", ");
-
-    // Distractor 2: last element left as original
-    const dist2 = [...correct];
-    dist2[dist2.length - 1] = activeNumbers[activeNumbers.length - 1];
-    const label2 = dist2.join(", ");
-
-    // Distractor 3: elements offset by 1
-    const dist3 = correct.map(n => n > 1 ? n - 1 : n + 1);
-    const label3 = dist3.join(", ");
-
-    const options = [
-      { label: correctLabel, isCorrect: true, value: correct },
-      { label: label1, isCorrect: false, value: dist1 },
-      { label: label2, isCorrect: false, value: dist2 },
-      { label: label3, isCorrect: false, value: dist3 },
-    ];
-
-    const unique: typeof options = [];
-    const seen = new Set<string>();
-    for (const opt of options) {
-      if (!seen.has(opt.label)) {
-        seen.add(opt.label);
-        unique.push(opt);
-      }
-    }
-
-    let fillIdx = 1;
-    while (unique.length < 4) {
-      const fake = correct.map(n => n + fillIdx);
-      const fakeLabel = fake.join(", ");
-      if (!seen.has(fakeLabel)) {
-        seen.add(fakeLabel);
-        unique.push({ label: fakeLabel, isCorrect: false, value: fake });
-      }
-      fillIdx++;
-    }
-
-    return unique.sort((a, b) => a.label.localeCompare(b.label));
-  };
-
-  // Helper: 4 Multiply Options
-  const getMultiplyOptions = () => {
-    const correctMMC = primesUsed.reduce((acc, val) => acc * val, 1);
-    const dist1 = correctMMC % 2 === 0 ? correctMMC / 2 : correctMMC - 5;
-    const dist2 = correctMMC + (activeNumbers[0] || 4);
-    const dist3 = correctMMC * 2;
-
-    const options = [
-      { label: correctMMC.toString(), isCorrect: true, value: correctMMC },
-      { label: dist1.toString(), isCorrect: false, value: dist1 },
-      { label: dist2.toString(), isCorrect: false, value: dist2 },
-      { label: dist3.toString(), isCorrect: false, value: dist3 },
-    ];
-
-    const unique: typeof options = [];
-    const seen = new Set<string>();
-    for (const opt of options) {
-      if (!seen.has(opt.label) && parseInt(opt.label) > 0) {
-        seen.add(opt.label);
-        unique.push(opt);
-      }
-    }
-
-    let fillIdx = 1;
-    while (unique.length < 4) {
-      const val = correctMMC + 10 * fillIdx;
-      const fakeLabel = val.toString();
-      if (!seen.has(fakeLabel)) {
-        seen.add(fakeLabel);
-        unique.push({ label: fakeLabel, isCorrect: false, value: val });
-      }
-      fillIdx++;
-    }
-
-    return unique.sort((a, b) => parseInt(a.label) - parseInt(b.label));
-  };
 
   // Scroll to bottom of chat
   useEffect(() => {
@@ -232,25 +95,6 @@ export default function TutorChat({
     if (!aiQuestion.trim()) return;
     onSendMessage(aiQuestion.trim());
     setAiQuestion("");
-  };
-
-  const handlePrimeClick = (prime: number) => {
-    onAnswerPrime(prime);
-  };
-
-  const handleDivisionSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const results = numInputs.map(val => parseInt(val));
-    if (results.some(isNaN)) return;
-    onAnswerDivision(results);
-  };
-
-  const handleMultiplySubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const val = parseInt(customInput);
-    if (isNaN(val)) return;
-    onAnswerMultiply(val);
-    setCustomInput("");
   };
 
   return (
@@ -351,146 +195,8 @@ export default function TutorChat({
         <div ref={chatEndRef} />
       </div>
 
-      {/* Dynamic Interaction Panel */}
-      <div className="border-t border-indigo-50 bg-white p-4 space-y-4">
-        
-        {/* Step-specific pedagogical controls */}
-        <div className="p-3 bg-slate-50 border border-indigo-50/50 rounded-2xl space-y-3">
-          {currentStepState === "ASK_PRIME" && (
-            <div className="space-y-3">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-                Passo 1: Qual é o menor número primo divisor para {activeNumbers.join(", ")}?
-              </span>
-              <div className="grid grid-cols-2 gap-2">
-                {getPrimeOptions().map((opt, idx) => {
-                  const letter = ["A", "B", "C", "D"][idx] || "A";
-                  const isWrongClicked = primeWrong.includes(opt.value);
-                  return (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => {
-                        if (!opt.isCorrect) {
-                          setPrimeWrong(prev => [...prev, opt.value]);
-                        }
-                        onAnswerPrime(opt.value);
-                      }}
-                      className={`flex items-center gap-2.5 p-3 text-left text-xs font-bold rounded-xl border transition-all cursor-pointer ${
-                        isWrongClicked
-                          ? "bg-red-50 border-red-200 text-red-700 shadow-inner"
-                          : "bg-white border-slate-100 hover:border-indigo-300 hover:bg-indigo-50/20 text-slate-700 shadow-sm"
-                      }`}
-                    >
-                      <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-extrabold flex-shrink-0 ${
-                        isWrongClicked ? "bg-red-200 text-red-800" : "bg-indigo-100 text-indigo-700"
-                      }`}>
-                        {letter}
-                      </span>
-                      <span className="font-mono">{opt.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {currentStepState === "ASK_DIVISION" && (
-            <div className="space-y-3">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-                Passo 2: Resolva as divisões de [{activeNumbers.join(", ")}] por {activePrime}:
-              </span>
-              <div className="grid grid-cols-2 gap-2">
-                {getDivisionOptions().map((opt, idx) => {
-                  const letter = ["A", "B", "C", "D"][idx] || "A";
-                  const isWrongClicked = divisionWrong.includes(opt.label);
-                  return (
-                    <button
-                      key={opt.label}
-                      type="button"
-                      onClick={() => {
-                        if (!opt.isCorrect) {
-                          setDivisionWrong(prev => [...prev, opt.label]);
-                        }
-                        onAnswerDivision(opt.value);
-                      }}
-                      className={`flex items-center gap-2.5 p-3 text-left text-xs font-bold rounded-xl border transition-all cursor-pointer ${
-                        isWrongClicked
-                          ? "bg-red-50 border-red-200 text-red-700 shadow-inner"
-                          : "bg-white border-slate-100 hover:border-indigo-300 hover:bg-indigo-50/20 text-slate-700 shadow-sm"
-                      }`}
-                    >
-                      <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-extrabold flex-shrink-0 ${
-                        isWrongClicked ? "bg-red-200 text-red-800" : "bg-indigo-100 text-indigo-700"
-                      }`}>
-                        {letter}
-                      </span>
-                      <span className="font-mono">[{opt.label}]</span>
-                    </button>
-                  );
-                })}
-              </div>
-              <p className="text-[10px] text-slate-400 italic">
-                *Dica: Números não divisíveis repetem eles mesmos!
-              </p>
-            </div>
-          )}
-
-          {currentStepState === "ASK_MULTIPLY_MMC" && (
-            <div className="space-y-3">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-                Passo 3: Multiplique os fatores primos {primesUsed.join(" × ")} para achar o MMC:
-              </span>
-              <div className="grid grid-cols-2 gap-2">
-                {getMultiplyOptions().map((opt, idx) => {
-                  const letter = ["A", "B", "C", "D"][idx] || "A";
-                  const isWrongClicked = multiplyWrong.includes(opt.label);
-                  return (
-                    <button
-                      key={opt.label}
-                      type="button"
-                      onClick={() => {
-                        if (!opt.isCorrect) {
-                          setMultiplyWrong(prev => [...prev, opt.label]);
-                        }
-                        onAnswerMultiply(opt.value);
-                      }}
-                      className={`flex items-center gap-2.5 p-3 text-left text-xs font-bold rounded-xl border transition-all cursor-pointer ${
-                        isWrongClicked
-                          ? "bg-red-50 border-red-200 text-red-700 shadow-inner"
-                          : "bg-white border-slate-100 hover:border-indigo-300 hover:bg-indigo-50/20 text-slate-700 shadow-sm"
-                      }`}
-                    >
-                      <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-extrabold flex-shrink-0 ${
-                        isWrongClicked ? "bg-red-200 text-red-800" : "bg-indigo-100 text-indigo-700"
-                      }`}>
-                        {letter}
-                      </span>
-                      <span className="font-mono">MMC = {opt.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {currentStepState === "CONGRATULATIONS" && (
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-indigo-800 flex items-center gap-1.5 animate-pulse">
-                <Sparkles className="w-4 h-4 text-amber-500 animate-spin-slow" />
-                MMC completado com maestria!
-              </span>
-              <button
-                onClick={onReset}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-xl text-xs font-bold shadow-md shadow-indigo-100 hover:shadow-lg transition-all cursor-pointer flex items-center gap-1"
-              >
-                Próximo Exercício
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Persistent AI General Question Bar */}
+      {/* Persistent AI General Question Bar & Form */}
+      <div className="border-t border-indigo-50 bg-white p-4">
         <form onSubmit={handleAiQuestionSubmit} className="flex gap-2">
           <div className="relative flex-1">
             <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
